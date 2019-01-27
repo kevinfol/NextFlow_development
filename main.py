@@ -1,7 +1,7 @@
 """
 Script Name:        main.py
 Script Author:      Kevin Foley, Civil Engineer, Reclamation
-Last Modified:      Apr 2, 2018
+Last Modified:      Jan 1, 2019
 
 Description:        NextFlow is a statistical modeling tool useful in predicting season 
                     inflows and streamflows. The tool collects meterological and hydrologic 
