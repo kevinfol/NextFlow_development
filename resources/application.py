@@ -79,18 +79,20 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
             "Value", # e.g. 24.5
             "EditedFlag"]) # e.g. 1 or 0 (edited or not edited)
         self.resampledTable = pd.DataFrame(columns = [
-            "Year",
             "DatasetInternalID",
             "ResampledDataID",
             "ResampledDataType",
             "PeriodStart",
             "PeriodEnd",
-            "Value"])
+            "Year",
+            "Value",
+            "Units"])
         self.equationPoolsTable = pd.DataFrame(columns = [
-            "EquationID",
-            "Key",
-            "Identifier",
-            "Value"])
+            "EquationID", # e.g. "JAN01"
+            "Key", # e.g. 'PREDICTOR', 'PREDICTAND'
+            "Identifier", # e.g. 'ID', '2001'
+            "Value",
+            "Units"]) # if applicable 
         self.forecastEquationsTable = pd.DataFrame(columns = [
             "ForecastEquationID",
             "Key",
