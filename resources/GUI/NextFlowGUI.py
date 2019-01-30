@@ -1,9 +1,9 @@
 """
-Script Name:        FlowCastGUI.py
+Script Name:        NextFlowGUI.py
 Script Author:      Kevin Foley, Civil Engineer, Reclamation
 Last Modified:      Apr 2, 2018
 
-Description:        'FlowCastGUI.py' is a PyQt5 GUI for the FlowCast application. 
+Description:        'NextFlowGUI.py' is a PyQt5 GUI for the NextFlow application. 
                     The GUI includes all the visual aspects of the application (menus,
                     plots, tables, buttons, webmaps, etc.) as well as the functionality
                     to add data to the plots, tables, and webmaps.
@@ -17,7 +17,7 @@ import  subprocess
 from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
-from    resources.GUI.Tabs  import  DatasetsTab
+from    resources.GUI.Tabs  import  DatasetsTab, DataTab
 
 myappid = u'reclamation.NextFlow.2b'
 if platform.system() == 'Windows':
@@ -51,6 +51,8 @@ class UI_MainWindow(object):
 
         self.datasetTab = DatasetsTab.DatasetTab()
         tabWidget.addTab(self.datasetTab, "Datasets")
+        self.dataTab = DataTab.DataTab()
+        tabWidget.addTab(self.dataTab, "Data")
         
 
         self.setCentralWidget(tabWidget)
@@ -114,19 +116,3 @@ class MenuBar(QtWidgets.QMenuBar):
         self.aboutMenu.addAction(self.updateAction)
 
         return
-
-
-
-class DataTab(QtWidgets.QWidget):
-    
-    """
-    This subclass of QWidget describes the layout of the FlowCast
-    applicaiton's Data Tab. For the functionality of the Data Tab, 
-    see the 'Data' section of 'application.py'
-    """
-    def __init__(self, parent = None):
-
-        QtWidgets.QWidget.__init__(self)
-
-        layout = QtWidgets.QVBoxLayout()
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)

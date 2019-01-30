@@ -30,7 +30,7 @@ class TimeSeriesDataPlot(FigureCanvas):
         self.fig = Figure()
         self.axes = self.fig.add_subplot(111)
         FigureCanvas.__init__(self, self.fig)
-        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
+        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.add_data([0],[0],'No Data')
         self.draw_plot()

@@ -27,14 +27,14 @@ import pandas as pd
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
 from datetime import datetime
-from resources.GUI import FlowCastGUI
+from resources.GUI import NextFlowGUI
 from resources.modules import gisFunctions
 from fuzzywuzzy.fuzz import WRatio 
 import multiprocessing as mp
 import itertools
 import ast
 
-class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
+class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow):
     """
     GLOBAL APPLICATION SETTINGS
     This section of the script deals with the initialization of the software. These subroutines 
@@ -124,6 +124,7 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
     
     def setupDatasetTab(self):
         """
+        Initialize the datasets Tab
         """
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
         self.loadAdditionalDatasetLists()
@@ -134,6 +135,8 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
 
     def loadAdditionalDatasetLists(self):
         """
+        Loads the additional datasets list located at resources/GIS/AdditionalDatasets.xlsx into a dataframe, and load the 
+        various drop-downs into the datasets tab.
         """
         self.additionalDatasetsList = pd.read_excel("resources/GIS/AdditionalDatasets.xlsx", dtype={'DatasetExternalID':str})
         self.datasetTab.climInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'CLIMATE INDICE']['DatasetName']))
@@ -153,6 +156,7 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
 
     def connectEventsDatasetTab(self):
         """
+        Connect Events within the datasets tab.
         """
         self.datasetTab.keywordSearchButton.clicked.connect(lambda x: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
         self.datasetTab.keywordSearchBox.returnPressed.connect(lambda: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
