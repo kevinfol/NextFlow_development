@@ -58,30 +58,31 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
 
         # Create the data structures.
         self.datasetTable = pd.DataFrame(columns = [
-            'DatasetInternalID', 
-            'DatasetType', 
-            'DatasetExternalID', 
-            'DatasetName',
-            'DatasetAgency', 
-            'DatasetParameter', 
-            'DatasetUnits',
-            'DatasetDefaultResampling', 
-            'DatasetDataloader', 
-            'DatasetHUC8',
-            'DatasetLatitude', 
-            'DatasetLongitude', 
-            'DatasetElevation',
-            'DatasetPORStart', 
-            'DatasetPOREnd'])
+            'DatasetInternalID', # As assigned by software or taken from master list of default datasets
+            'DatasetType', # e.g. STREAMGAGE, or RESERVOIR
+            'DatasetExternalID', # e.g. "GIBR" or "06025500"
+            'DatasetName', # e.g. Gibson Reservoir
+            'DatasetAgency', # e.g. USGS
+            'DatasetParameter', # e.g. Temperature
+            'DatasetUnits', # e.g. CFS
+            'DatasetDefaultResampling', # e.g. average 
+            'DatasetDataloader', # e.g. RCC_ACIS
+            'DatasetHUC8', # e.g. 10030104
+            'DatasetLatitude',  # e.g. 44.352
+            'DatasetLongitude', # e.g. -112.324
+            'DatasetElevation', # e.g. 3133 (in ft)
+            'DatasetPORStart', # e.g. 1/24/1993
+            'DatasetPOREnd']) # e.g. 1/22/2019
         self.dataTable = pd.DataFrame(columns = [
-            "Datetime",
-            "DatasetInternalID",
-            "Value"])
+            "Datetime", # e.g. 2019-01-05
+            "DatasetInternalID", # e.g. 100104
+            "Value", # e.g. 24.5
+            "EditedFlag"]) # e.g. 1 or 0 (edited or not edited)
         self.resampledTable = pd.DataFrame(columns = [
             "Year",
             "DatasetInternalID",
-            "ResmapledDataID",
-            "ResmapledDataType",
+            "ResampledDataID",
+            "ResampledDataType",
             "PeriodStart",
             "PeriodEnd",
             "Value"])
@@ -95,6 +96,12 @@ class mainWindow(QtWidgets.QMainWindow, FlowCastGUI.UI_MainWindow):
             "Key",
             "Identifier",
             "Value"]) 
+        self.forecastsTable = pd.DataFrame(columns = [
+            "ForecastEquationID",
+            "Year",
+            "Key",
+            "Identifier",
+            "Value"])
 
         self.setupDatasetTab()
 
