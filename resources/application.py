@@ -17,7 +17,7 @@ Disclaimer:         This script, and the overall FlowCast Application have been
 
 """
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 from datetime import datetime
 from resources.GUI import NextFlowGUI
 from resources.modules.DatasetTab import datasetTabMaster 
@@ -63,12 +63,14 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             'DatasetElevation', # e.g. 3133 (in ft)
             'DatasetPORStart', # e.g. 1/24/1993
             'DatasetPOREnd']) # e.g. 1/22/2019
-        self.dataTable = pd.DataFrame(columns = [
-            "Datetime", # e.g. 2019-01-05 [INDEX]
-            "Vesrsion", # e.g. 0, 1, ... [INDEX]
-            "DatasetInternalID", # e.g. 100104
-            "Value", # e.g. 24.5
-            "EditedFlag"]) # e.g. 1 or 0 (edited or not edited)
+        self.dataTable = pd.DataFrame(
+            index = pd.MultiIndex(
+                levels=[[],[],[]],
+                codes = [[],[],[]],
+                names = ['Datetime','DatasetInternalID','Version']
+            ),
+            columns = [
+                "Value"])
         self.resampledTable = pd.DataFrame(columns = [
             "DatasetInternalID",
             "ResampledDataID",
@@ -96,8 +98,12 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             "Identifier",
             "Value"])
 
+        # Set up tabs
         self.setupDatasetTab()
         self.setupDataTab()
+
+        # Intiate a threadpool
+        self.threadPool = QtCore.QThreadPool()
 
         return
 
