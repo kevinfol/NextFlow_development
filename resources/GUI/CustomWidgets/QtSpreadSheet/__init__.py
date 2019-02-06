@@ -1,0 +1,1 @@
+from .QtSpreadSheet import QSpreadSheetWidget

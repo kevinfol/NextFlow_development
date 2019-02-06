@@ -2,6 +2,7 @@ from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
 from resources.GUI.CustomWidgets.MatplotlibPlots import TimeSeriesDataPlot, NavigationToolbar
+from resources.GUI.CustomWidgets.QtSpreadSheet.QtSpreadSheet import QSpreadSheetWidget
 import  sys
 import  os
 
@@ -22,6 +23,10 @@ class DataTab(QtWidgets.QWidget):
         self.downloadButton = QtWidgets.QPushButton("Download")
         self.updateButton = QtWidgets.QPushButton("Update")
         self.importButton = QtWidgets.QPushButton("Import")
+        self.downloadProgressBar = QtWidgets.QProgressBar()
+        self.downloadProgressBar.setRange(0, 100)
+        self.downloadProgressBar.setFixedWidth(100)
+        self.downloadProgressBar.hide()
         self.viewMissingButton = QtWidgets.QPushButton("View Missing")
         hlayout.addWidget(porLabel)
         hlayout.addWidget(self.porT1)
@@ -29,6 +34,7 @@ class DataTab(QtWidgets.QWidget):
         hlayout.addWidget(self.downloadButton)
         hlayout.addWidget(self.updateButton)
         hlayout.addWidget(self.importButton)
+        hlayout.addWidget(self.downloadProgressBar)
         hlayout.addSpacerItem(QtWidgets.QSpacerItem(500, 10, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
         hlayout.addWidget(self.viewMissingButton)
         layout.addLayout(hlayout)
@@ -45,7 +51,7 @@ class DataTab(QtWidgets.QWidget):
         widg.setLayout(layout_)
         splitter.addWidget(widg)
 
-        table = QtWidgets.QTableWidget()
+        table = QSpreadSheetWidget()
         splitter.addWidget(table)
 
         layout.addWidget(splitter)
