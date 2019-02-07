@@ -56,8 +56,8 @@ class alternateThreadWorker(QtCore.QRunnable):
         processes = []
         returned = []
 
-        for i in range(self.totalStations):
-            proc = mp.Process(target = worker, args = (queue, self.datasets.loc[i], self.startDate, self.endDate))
+        for dataset in self.datasets.iterrows():
+            proc = mp.Process(target = worker, args = (queue, dataset[1], self.startDate, self.endDate))
             processes.append(proc)
             proc.start()
 
@@ -112,7 +112,7 @@ def worker(queue, dataset, startDate, endDate):
     try:
         data = dataGetFunction(dataset, startDate, endDate)
         data.columns =['Value']
-        data.set_index([data.index, pd.Index(len(data)*[dataset['DatasetInternalID']])], inplace=True)
+        data.set_index([data.index, pd.Index(len(data)*[dataset.name])], inplace=True)
         data.index.names = ['Datetime','DatasetInternalID']
     except:
         retval = pd.DataFrame()

@@ -51,8 +51,8 @@ class DataTab(QtWidgets.QWidget):
         widg.setLayout(layout_)
         splitter.addWidget(widg)
 
-        table = QSpreadSheetWidget()
-        splitter.addWidget(table)
+        self.table = QSpreadSheetWidget()
+        splitter.addWidget(self.table)
 
         layout.addWidget(splitter)
 

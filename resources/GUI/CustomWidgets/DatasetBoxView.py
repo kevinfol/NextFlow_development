@@ -65,7 +65,7 @@ class DatasetBoxView(QtWidgets.QListWidget):
         """
         if status == 'added':
             for item in [self.item(i) for i in range(self.count())]:
-                if item.dataset['DatasetInternalID'] == internalID:
+                if item.dataset.name == internalID:
                     html = """<b style="color:#5fd13c; font-size:14px">{0}</b><br>
                         <b>ID: </b>{1}<br>
                         <b>Type: </b>{2}<br>
@@ -75,7 +75,7 @@ class DatasetBoxView(QtWidgets.QListWidget):
                     return
         else:
             for item in [self.item(i) for i in range(self.count())]:
-                if item.dataset['DatasetInternalID'] == internalID:
+                if item.dataset.name == internalID:
                     html = """<b style="color:#0a85cc; font-size:14px">{0}</b><br>
                         <b>ID: </b>{1}<br>
                         <b>Type: </b>{2}<br>
@@ -91,7 +91,7 @@ class DatasetBoxView(QtWidgets.QListWidget):
         idx = self.currentRow()
         if idx == -1:
             return
-        datasetID = self.item(idx).dataset['DatasetInternalID']
+        datasetID = self.item(idx).dataset.name
         self.takeItem(idx)
         self.removeSignal.emit(datasetID)
 
@@ -116,7 +116,7 @@ class DatasetBoxView(QtWidgets.QListWidget):
         name = html[index+1:index2]
         html = html.replace(name, '&#10004; ' + name)
         textbox.setText(html)
-        self.addSignal.emit(datasetRow['DatasetInternalID'])
+        self.addSignal.emit(datasetRow.name)
 
         return
 

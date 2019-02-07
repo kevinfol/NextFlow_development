@@ -81,30 +81,31 @@ class dataTab(object):
         newValues.columns = ['Value']
         newValues.set_index([newValues.index, pd.Index(len(newValues)*[0])], inplace=True)
         newValues.index.names = ['Datetime','DatasetInternalID','Version']
-        self.dataTable.append(newValues, inplace=True)
+        self.dataTable = self.dataTable.append(newValues)
+        self.dataTable = self.dataTable[~self.dataTable.index.duplicated(keep='last')]
 
         # Add the updated data to the datatable
-        updatedValues = pd.DataFrame(merged[merged['_merge'] == 'both']['Value_new'])
-
-        # update the original data table with the changed data
-        #for data_row in merged.iterrows():
-        for i in range(len(merged)):
-            idx = merged.index[i]
-            data_row = (idx, merged.loc[idx])
-            if i == len(merged) - 1:
-                print(data_row[1]['Value_old'] == np.nan)
-                print(data_row[1]['_merge'] == 'right_only')
-            
-            if np.isnan(data_row[1]['Value_old']) and data_row[1]['_merge'] == 'right_only':
-                # This is a new value that was not in the original data table. We append it directly with a version of '0'
-                self.dataTable.loc[tuple([data_row[0][0], data_row[0][1], 0]), 'Value'] = [data_row[1]['Value_new']]
-                continue
-            
-            if data_row[1]['_merge'] == 'both':
-                # We have an updated value for a dataset. We set the old data value to version 1 and append the new value with version 0
-                self.dataTable.loc[tuple([data_row[0][0], data_row[0][1], 1]), 'Value'] = [data_row[1]['Value_old']]
-                self.dataTable.loc[tuple([data_row[0][0], data_row[0][1], 0]), 'Value'] = [data_row[1]['Value_new']]
-                continue
-            
-        print(self.dataTable)
+        updatedValuesNew = pd.DataFrame(merged[merged['_merge'] == 'both']['Value_new'])
+        updatedValuesOld = pd.DataFrame(merged[merged['_merge'] == 'both']['Value_old'])
+        updatedValuesNew.columns = ['Value']
+        updatedValuesOld.columns = ['Value']
+        updatedValuesNew.set_index([updatedValuesNew.index, pd.Index(len(updatedValuesNew)*[0])], inplace=True)
+        updatedValuesOld.set_index([updatedValuesOld.index, pd.Index(len(updatedValuesOld)*[1])], inplace=True)
+        updatedValuesNew.index.names = ['Datetime','DatasetInternalID','Version']
+        updatedValuesOld.index.names = ['Datetime','DatasetInternalID','Version']
+        self.dataTable = self.dataTable.append(updatedValuesNew)
+        self.dataTable = self.dataTable.append(updatedValuesOld)
+        self.dataTable = self.dataTable[~self.dataTable.index.duplicated(keep='last')]
+        self.displayDataInTable()
         return
+    
+    def displayDataInTable(self):
+        """
+        This function takes the dataTable and converts it into a spreadsheet-like datatable. 
+        """
+        self.dataDisplayTable = self.dataTable.loc[pd.IndexSlice[:,:,0], :] # Returns only the "0"-version data
+        self.dataDisplayTable.set_index([self.dataDisplayTable.index.get_level_values(0), self.dataDisplayTable.index.get_level_values(1)], inplace=True) # Remove the version index
+        self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index
+        self.dataDisplayTable.insert(loc=0, column='Datetime', value=list(self.dataDisplayTable.index.get_level_values(0)))
+        self.dataDisplayTable.columns = ['Datetime'] + [self.datasetTable.loc[i]['DatasetName'] for i in list(self.dataDisplayTable.columns[1:])]
+        self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False)

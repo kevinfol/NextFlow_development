@@ -28,7 +28,7 @@ class datasetTab(object):
         Loads the additional datasets list located at resources/GIS/AdditionalDatasets.xlsx into a dataframe, and load the 
         various drop-downs into the datasets tab.
         """
-        self.additionalDatasetsList = pd.read_excel("resources/GIS/AdditionalDatasets.xlsx", dtype={'DatasetExternalID':str})
+        self.additionalDatasetsList = pd.read_excel("resources/GIS/AdditionalDatasets.xlsx", dtype={'DatasetExternalID':str}, index_col=0)
         self.datasetTab.climInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'CLIMATE INDICE']['DatasetName']))
         self.datasetTab.pdsiInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'PDSI']['DatasetName']))
 
@@ -99,7 +99,7 @@ class datasetTab(object):
             huc = self.datasetTab.prismInput.text()
             if self.validateHUCInput(huc):
                 dataset = self.additionalDatasetsList[(self.additionalDatasetsList['DatasetAgency'] == 'PRISM') & (self.additionalDatasetsList['DatasetExternalID'] == huc)]
-                self.datasetTable = self.datasetTable.append(dataset, ignore_index=True)
+                self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
                 self.datasetTab.prismInput.clear()
             else:
                 loggingAndErrors.showErrorMessage("HUC number is invalid")
@@ -108,7 +108,7 @@ class datasetTab(object):
             huc = self.datasetTab.nrccInput.text()
             if self.validateHUCInput(huc):
                 dataset = self.additionalDatasetsList[(self.additionalDatasetsList['DatasetAgency'] == 'NRCC') & (self.additionalDatasetsList['DatasetExternalID'] == huc)]
-                self.datasetTable = self.datasetTable.append(dataset, ignore_index=True)
+                self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
                 self.datasetTab.nrccInput.clear()
             else:
                 loggingAndErrors.showErrorMessage("HUC number is invalid")
@@ -116,12 +116,12 @@ class datasetTab(object):
         elif type_ == 'PDSI':
             division = self.datasetTab.pdsiInput.currentText()
             dataset = self.additionalDatasetsList[(self.additionalDatasetsList['DatasetName'] == division) & (self.additionalDatasetsList['DatasetType'] == 'PDSI')]
-            self.datasetTable = self.datasetTable.append(dataset, ignore_index=True)
+            self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
 
         elif type_ == 'CLIM':
             index_ = self.datasetTab.climInput.currentText()
             dataset = self.additionalDatasetsList[(self.additionalDatasetsList['DatasetName'] == index_) & (self.additionalDatasetsList['DatasetType'] == 'CLIMATE INDICE')]
-            self.datasetTable = self.datasetTable.append(dataset, ignore_index=True)
+            self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
 
         elif type_ == 'USERDEFINE':
             pass
@@ -140,20 +140,25 @@ class datasetTab(object):
         This function is responsible for loading the GIS data located 
         """
         if not hasattr(self, "searchableDatasetsTable"):
-            self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx")
+            self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx", index_col=0)
+            self.searchableDatasetsTable.index.name = 'DatasetInternalID'
 
         geojson_ = gisFunctions.dataframeToGeoJSON(self.searchableDatasetsTable)
         self.datasetTab.webMapView.page.loadFinished.connect(lambda x: self.datasetTab.webMapView.page.runJavaScript("loadJSONData({0})".format(geojson_)))
         self.datasetTab.webMapView.page.java_msg_signal.connect(lambda x: self.addDatasetToSelectedDatasets(int(x.split(':')[1])) if "ID:" in x else None)
 
     def datasetRemovedFromDatasetTable(self, datasetID):
-
-        datasetToRemove = self.datasetTable[self.datasetTable['DatasetInternalID'] == datasetID]
-        self.datasetTable.drop(datasetToRemove.index, inplace=True)
+        print(datasetID)
+        datasetToRemove = self.datasetTable.loc[datasetID]
+        self.datasetTable.drop(datasetToRemove.name, inplace=True)
         numDatasets = len(self.datasetTable)
         self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
         self.datasetTab.searchResultsBox.updateAddedStatus(datasetID)
         self.datasetTab.boxHucResultsBox.updateAddedStatus(datasetID)
+        # ###########################################
+        # NEED TO REMOVE ANY DATA ASSOCIATED WITH THIS STATION, ALSO ANY PREDICTORS OR FORECASTS THAT RELY ON THIS STATION
+        # ########################################################################
+        
 
     def addDatasetToSelectedDatasets(self, datasetID):
         """
@@ -161,19 +166,18 @@ class datasetTab(object):
                 - The ID (DatasetInternalID) of the dataset that is to be added to the selected datasets
         """
 
-        if datasetID in list(self.datasetTable['DatasetInternalID']):
+        if datasetID in list(self.datasetTable.index):
             return
 
-        dataset = self.searchableDatasetsTable[self.searchableDatasetsTable['DatasetInternalID']==datasetID]
-        self.datasetTable = self.datasetTable.append(dataset, ignore_index=True)
+        dataset = self.searchableDatasetsTable.loc[datasetID]
+        self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 
         numDatasets = len(self.datasetTable)
         self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
 
         for result in self.datasetTable.iterrows():
-            if result[1]['DatasetInternalID'] in list(self.datasetTable['DatasetInternalID']):
-                self.datasetTab.searchResultsBox.updateAddedStatus(result[1]['DatasetInternalID'], 'added')
+            self.datasetTab.searchResultsBox.updateAddedStatus(result[0], 'added')
 
         return
 
@@ -207,7 +211,7 @@ class datasetTab(object):
             return
 
         if not hasattr(self, "searchableDatasetsTable"):
-            self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx")
+            self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx", index_col=0)
 
         searchTable = self.searchableDatasetsTable.copy()
         searchTable['DatasetExternalID'] = searchTable['DatasetExternalID'].astype(str)
@@ -225,8 +229,8 @@ class datasetTab(object):
         self.loadSelectedDatasets(searchTable, self.datasetTab.searchResultsBox)
 
         for result in searchTable.iterrows():
-            if result[1]['DatasetInternalID'] in list(self.datasetTable['DatasetInternalID']):
-                self.datasetTab.searchResultsBox.updateAddedStatus(result[1]['DatasetInternalID'], 'added')
+            if result[0] in list(self.datasetTable.index):
+                self.datasetTab.searchResultsBox.updateAddedStatus(result[0], 'added')
         self.datasetTab.keywordSearchButton.setEnabled(True)
         return 
 

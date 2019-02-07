@@ -44,11 +44,13 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         # Initialize the class as a QMainWindow and setup its User Interface
         super(self.__class__, self).__init__()
         self.setUI()
+        pd.set_option('display.max_rows', 25)
         
 
         # Create the data structures.
-        self.datasetTable = pd.DataFrame(columns = [
-            'DatasetInternalID', # As assigned by software or taken from master list of default datasets
+        self.datasetTable = pd.DataFrame(
+            index = pd.Index([], dtype=int, name='DatasetInternalID'),
+            columns = [
             'DatasetType', # e.g. STREAMGAGE, or RESERVOIR
             'DatasetExternalID', # e.g. "GIBR" or "06025500"
             'DatasetName', # e.g. Gibson Reservoir
