@@ -44,7 +44,7 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         # Initialize the class as a QMainWindow and setup its User Interface
         super(self.__class__, self).__init__()
         self.setUI()
-        self.showMaximized()
+        
 
         # Create the data structures.
         self.datasetTable = pd.DataFrame(columns = [
@@ -69,8 +69,8 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
                 codes = [[],[],[]],
                 names = ['Datetime','DatasetInternalID','Version']
             ),
-            columns = [
-                "Value"])
+            columns = ["Value"],
+            dtype=float)
         self.resampledTable = pd.DataFrame(columns = [
             "DatasetInternalID",
             "ResampledDataID",
@@ -104,6 +104,9 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
 
         # Intiate a threadpool
         self.threadPool = QtCore.QThreadPool()
+
+        # Show the application
+        self.showMaximized()
 
         return
 

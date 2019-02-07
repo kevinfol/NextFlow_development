@@ -76,6 +76,16 @@ class dataTab(object):
         # Filter to only get the changed data
         merged = merged[merged.Value_old != merged.Value_new]
 
+        # Add brand new data to the datatable
+        newValues = pd.DataFrame(merged[(np.isnan(merged['Value_old'])) & (merged['_merge'] == 'right_only')]['Value_new'])
+        newValues.columns = ['Value']
+        newValues.set_index([newValues.index, pd.Index(len(newValues)*[0])], inplace=True)
+        newValues.index.names = ['Datetime','DatasetInternalID','Version']
+        self.dataTable.append(newValues, inplace=True)
+
+        # Add the updated data to the datatable
+        updatedValues = pd.DataFrame(merged[merged['_merge'] == 'both']['Value_new'])
+
         # update the original data table with the changed data
         #for data_row in merged.iterrows():
         for i in range(len(merged)):
