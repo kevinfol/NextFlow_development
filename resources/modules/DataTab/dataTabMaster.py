@@ -108,4 +108,4 @@ class dataTab(object):
         self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index
         self.dataDisplayTable.insert(loc=0, column='Datetime', value=list(self.dataDisplayTable.index.get_level_values(0)))
         self.dataDisplayTable.columns = ['Datetime'] + [self.datasetTable.loc[i]['DatasetName'] for i in list(self.dataDisplayTable.columns[1:])]
-        self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False)
+        self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False, display_index_col=True)

@@ -190,11 +190,11 @@ def logMsg(msg):
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout
     import sys
-    data = pd.read_excel('tests/PointDatasets.xlsx').astype('object')
+    data = pd.read_excel('resources/GUI/CustomWidgets/QtSpreadSheet/tests/PointDatasets.xlsx').astype('object')
     application = QApplication(sys.argv)
     mw = QSpreadSheetWidget(highlightColor='#4baf90')
     mw.show()
-    mw.model().load_new_dataset(data)
+    mw.model().load_new_dataset(data, suppress_column_names=False, display_index_col=True)
     def run_():
         return_value = application.exec_()
         print(data)

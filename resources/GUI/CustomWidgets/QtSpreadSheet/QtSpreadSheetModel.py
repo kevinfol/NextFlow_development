@@ -35,7 +35,7 @@ class QSpreadSheetModel(QAbstractItemModel):
         return
 
 
-    def load_new_dataset(self, dataset, suppress_column_names = True):
+    def load_new_dataset(self, dataset, suppress_column_names = True, display_index_col = False):
         """
         loads a new pandas or numpy dataset into the model. The 
         dataset must be able to be expressed in a 2-D numpy array (for 
@@ -45,6 +45,7 @@ class QSpreadSheetModel(QAbstractItemModel):
 
         keyword args:
             suppress_column_names (True/False): ignores column headers in pandas dataframe, default True
+            display_index_col (True/False): displays the dataframe index as first column, default False
 
         """
         # Begin model reset
@@ -52,6 +53,7 @@ class QSpreadSheetModel(QAbstractItemModel):
 
         # Set the class variables
         self.suppress_column_names = suppress_column_names
+        self.display_index_col = display_index_col
         self.numRows, self.numColumns = dataset.shape
         self.formulaArray = np.full(dataset.shape, '', dtype='U256')
 
@@ -59,12 +61,22 @@ class QSpreadSheetModel(QAbstractItemModel):
         if isinstance(dataset, pd.DataFrame):
             self.dataArray = dataset.values
             self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+            if display_index_col:
+                self.numColumns += 1
+                self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
+                self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.datasetIndexArray], axis=1), dtype='U256')
+                self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
             if suppress_column_names == False:
                 self.headerArray = dataset.columns.values
                 self.numRows += 1
+                if display_index_col:
+                    self.headerArray = np.array(np.insert(self.headerArray, 0, 'Datetime'))
                 self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.headerArray], axis=0), dtype='U256')
                 self.indexArray = np.array([[self.createIndex(0, i, headerValue) for i, headerValue in enumerate(self.headerArray)]])
-                self.indexArray = np.append(self.indexArray, [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)], axis = 0)
+                if display_index_col:
+                    self.indexArray = np.append(self.indexArray, np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)]), axis = 0)
+                else:
+                    self.indexArray = np.append(self.indexArray, [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)], axis = 0)
         else:
             self.dataArray = dataset
             self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
@@ -110,10 +122,17 @@ class QSpreadSheetModel(QAbstractItemModel):
         
         elif role == Qt.DisplayRole:
             if self.suppress_column_names:
+                if self.display_index_col:
+                    if index.column() == 0:
+                        return str(self.datasetIndexArray[index.row()])
+                    return str(self.dataArray[index.row()][index.column()-1]) 
                 return str(self.dataArray[index.row()][index.column()])
             if index.row() == 0:
                 return str(self.headerArray[index.column()])
-            return str(self.dataArray[index.row()-1][index.column()])
+            else:
+                if index.column() == 0:
+                    return str(self.datasetIndexArray[index.row()-1])
+                return str(self.dataArray[index.row()-1][index.column()-1])
         
         elif role == Qt.EditRole:
             if self.formulaArray[index.row()][index.column()] != '':
@@ -262,14 +281,14 @@ class QSpreadSheetModel(QAbstractItemModel):
         # Find ranges in the parse string (A34:B55)
         ranges = re.findall(r'[a-zA-Z]+[0-9]+:[a-zA-Z]+[0-9]+', parse_string)
         for range_ in ranges:
-            parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, self.suppress_column_names))
+            parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, self.suppress_column_names, self.display_index_col))
         
         # Find individual cells in the parse_string
         cell_names = re.findall(r'[a-zA-Z]+[0-9]+', parse_string)
         for cell in cell_names:
             if cell in re.findall(r'{0}(?=\()'.format(cell), parse_string):
                 continue
-            parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, self.suppress_column_names))
+            parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, self.suppress_column_names, self.display_index_col))
 
         value = float(eval(parse_string))
         if int(value) == 0:

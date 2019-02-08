@@ -145,7 +145,7 @@ def propogate_values(values, direction='down'):
         return values[-1].replace(str_list[-1], str(next_val))
 
 
-def replace_cell_with_value(cell, array_, headers_suppresed = True):
+def replace_cell_with_value(cell, array_, headers_suppresed = True, index_col = False):
     """
     Replaces cells with format 'AA23' with 
     thier respective model array value
@@ -183,7 +183,7 @@ def col_to_num(col):
         num = num * 26 + (ord(c.upper()) - ord('A')) + 1
     return int(num)
     
-def create_range(range_, arrayTest, headers_suppresed = True):
+def create_range(range_, arrayTest, headers_suppresed = True, index_col = False):
     """
     Creates a range string from a start and end value
     'A1','A4' becomes 'A1,A2,A3,A4'
