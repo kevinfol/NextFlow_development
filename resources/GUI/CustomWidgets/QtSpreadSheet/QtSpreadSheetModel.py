@@ -57,29 +57,29 @@ class QSpreadSheetModel(QAbstractItemModel):
         self.numRows, self.numColumns = dataset.shape
         self.formulaArray = np.full(dataset.shape, '', dtype='U256')
 
+        dataset = pd.DataFrame(dataset)
+
         # Figure out if 'dataset' is pandas or numpy and create the data and index arrays
-        if isinstance(dataset, pd.DataFrame):
-            self.dataArray = dataset.values
-            self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+
+        self.dataArray = dataset.values
+        self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+        if display_index_col:
+            self.numColumns += 1
+            self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
+            self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.datasetIndexArray], axis=1), dtype='U256')
+            self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+        if suppress_column_names == False:
+            self.headerArray = dataset.columns.values
+            self.numRows += 1
             if display_index_col:
-                self.numColumns += 1
-                self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
-                self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.datasetIndexArray], axis=1), dtype='U256')
-                self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
-            if suppress_column_names == False:
-                self.headerArray = dataset.columns.values
-                self.numRows += 1
-                if display_index_col:
-                    self.headerArray = np.array(np.insert(self.headerArray, 0, 'Datetime'))
-                self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.headerArray], axis=0), dtype='U256')
-                self.indexArray = np.array([[self.createIndex(0, i, headerValue) for i, headerValue in enumerate(self.headerArray)]])
-                if display_index_col:
-                    self.indexArray = np.append(self.indexArray, np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)]), axis = 0)
-                else:
-                    self.indexArray = np.append(self.indexArray, [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)], axis = 0)
-        else:
-            self.dataArray = dataset
-            self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+                self.headerArray = np.array(np.insert(self.headerArray, 0, 'Datetime'))
+            self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.headerArray], axis=0), dtype='U256')
+            self.indexArray = np.array([[self.createIndex(0, i, headerValue) for i, headerValue in enumerate(self.headerArray)]])
+            if display_index_col:
+                self.indexArray = np.append(self.indexArray, np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)]), axis = 0)
+            else:
+                self.indexArray = np.append(self.indexArray, [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)], axis = 0)
+    
 
         # End model reset
         self.endResetModel()
@@ -121,18 +121,31 @@ class QSpreadSheetModel(QAbstractItemModel):
             return QVariant()
         
         elif role == Qt.DisplayRole:
-            if self.suppress_column_names:
-                if self.display_index_col:
-                    if index.column() == 0:
-                        return str(self.datasetIndexArray[index.row()])
-                    return str(self.dataArray[index.row()][index.column()-1]) 
+
+            # 4 possible cases:
+            # Case 1: suppress_column_names, no index column
+            if self.suppress_column_names == True and self.display_index_col == False:
                 return str(self.dataArray[index.row()][index.column()])
-            if index.row() == 0:
-                return str(self.headerArray[index.column()])
-            else:
+
+            # Case 2: column names and no index column
+            if self.suppress_column_names == False and self.display_index_col == False:
+                if index.row() == 0:
+                    return str(self.headerArray[index.column()])
+                return str(self.dataArray[index.row() - 1][index.column()])
+
+            # Case 3: column names and  index column
+            if self.suppress_column_names == False and self.display_index_col == True:
+                if index.row() == 0:
+                    return str(self.headerArray[index.column()])
                 if index.column() == 0:
                     return str(self.datasetIndexArray[index.row()-1])
-                return str(self.dataArray[index.row()-1][index.column()-1])
+                return str(self.dataArray[index.row() - 1][index.column()-1])
+
+            # Case 4: index column but no column names
+            if self.suppress_column_names == True and self.display_index_col == True:
+                if index.column() == 0:
+                    return str(self.datasetIndexArray[index.row()-1])
+                return str(self.dataArray[index.row()][index.column()-1])
         
         elif role == Qt.EditRole:
             if self.formulaArray[index.row()][index.column()] != '':
