@@ -35,7 +35,7 @@ class QSpreadSheetModel(QAbstractItemModel):
         return
 
 
-    def load_new_dataset(self, dataset, suppress_column_names = True, display_index_col = False):
+    def load_new_dataset(self, dataset, suppress_column_names = True, display_index_col = False, index_col_name='Index'):
         """
         loads a new pandas or numpy dataset into the model. The 
         dataset must be able to be expressed in a 2-D numpy array (for 
@@ -46,6 +46,7 @@ class QSpreadSheetModel(QAbstractItemModel):
         keyword args:
             suppress_column_names (True/False): ignores column headers in pandas dataframe, default True
             display_index_col (True/False): displays the dataframe index as first column, default False
+            index_col_name: Column header to apply to the index column if applicable
 
         """
         # Begin model reset
@@ -55,31 +56,36 @@ class QSpreadSheetModel(QAbstractItemModel):
         self.suppress_column_names = suppress_column_names
         self.display_index_col = display_index_col
         self.numRows, self.numColumns = dataset.shape
-        self.formulaArray = np.full(dataset.shape, '', dtype='U256')
+        self.index_col_name = index_col_name
+        self.formulaArray = np.array(np.full(dataset.shape, '', dtype='U256'))
+        self.case = self.case_()
 
         dataset = pd.DataFrame(dataset)
-
-        # Figure out if 'dataset' is pandas or numpy and create the data and index arrays
-
         self.dataArray = dataset.values
-        self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
-        if display_index_col:
+
+        # Case 1: suppress_column_names, no index column
+        if self.case == 1:
+            self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+
+        # Case 2: column names and no index column
+        if self.case == 2:
+            self.numRows += 1
+            self.headerArray = np.array(dataset.columns.values)
+            self.indexArray = np.array([[self.createIndex(0, i, val) for i, val in enumerate(self.headerArray)]] + [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+
+        # Case 3: column names and  index column
+        if self.case == 3:
+            self.numColumns += 1
+            self.numRows += 1
+            self.headerArray = np.array([index_col_name] + list(dataset.columns.values), dtype='<U64')
+            self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
+            self.indexArray = np.array([[self.createIndex(0, i, val) for i, val in enumerate(self.headerArray)]] + [[self.createIndex(i+1, 0, self.datasetIndexArray[i])] + [self.createIndex(i+1, j+1, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
+        
+        # Case 4: index column but no column names
+        if self.case == 4:
             self.numColumns += 1
             self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
-            self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.datasetIndexArray], axis=1), dtype='U256')
-            self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
-        if suppress_column_names == False:
-            self.headerArray = dataset.columns.values
-            self.numRows += 1
-            if display_index_col:
-                self.headerArray = np.array(np.insert(self.headerArray, 0, 'Datetime'))
-            self.formulaArray = np.array(np.insert(self.formulaArray, 0, ['' for i in self.headerArray], axis=0), dtype='U256')
-            self.indexArray = np.array([[self.createIndex(0, i, headerValue) for i, headerValue in enumerate(self.headerArray)]])
-            if display_index_col:
-                self.indexArray = np.append(self.indexArray, np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i,j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)]), axis = 0)
-            else:
-                self.indexArray = np.append(self.indexArray, [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)], axis = 0)
-    
+            self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
 
         # End model reset
         self.endResetModel()
@@ -124,44 +130,74 @@ class QSpreadSheetModel(QAbstractItemModel):
 
             # 4 possible cases:
             # Case 1: suppress_column_names, no index column
-            if self.suppress_column_names == True and self.display_index_col == False:
+            if self.case == 1:
                 return str(self.dataArray[index.row()][index.column()])
 
             # Case 2: column names and no index column
-            if self.suppress_column_names == False and self.display_index_col == False:
+            if self.case == 2:
                 if index.row() == 0:
                     return str(self.headerArray[index.column()])
                 return str(self.dataArray[index.row() - 1][index.column()])
 
             # Case 3: column names and  index column
-            if self.suppress_column_names == False and self.display_index_col == True:
+            if self.case == 3:
                 if index.row() == 0:
                     return str(self.headerArray[index.column()])
                 if index.column() == 0:
                     return str(self.datasetIndexArray[index.row()-1])
-                return str(self.dataArray[index.row() - 1][index.column()-1])
+                return str(self.dataArray[index.row()-1][index.column()-1])
 
             # Case 4: index column but no column names
-            if self.suppress_column_names == True and self.display_index_col == True:
+            if self.case == 4:
                 if index.column() == 0:
                     return str(self.datasetIndexArray[index.row()-1])
                 return str(self.dataArray[index.row()][index.column()-1])
         
         elif role == Qt.EditRole:
-            if self.formulaArray[index.row()][index.column()] != '':
-                return str(self.formulaArray[index.row()][index.column()])
-            else:
-                if self.suppress_column_names:
-                    return str(self.dataArray[index.row()][index.column()])
+
+            # Case 1: suppress_column_names, no index column
+            if self.case == 1:
+                if self.formulaArray[index.row()][index.column()] != '':
+                    return str(self.formulaArray[index.row()][index.column()])
+            
+            # Case 2: column names and no index column
+            if self.case == 2:
                 if index.row() == 0:
-                    return str(self.headerArray[index.column()])
-                return str(self.dataArray[index.row()-1][index.column()])
-        
+                    return QVariant()
+                if self.formulaArray[index.row()-1][index.column()] != '':
+                    return str(self.formulaArray[index.row()-1][index.column()])
+
+            # Case 3: column names and  index column
+            if self.case == 3:
+                if index.row() == 0 or index.column() == 0:
+                    return QVariant()
+                if self.formulaArray[index.row()-1][index.column()-1] != '':
+                    return str(self.formulaArray[index.row()-1][index.column()-1])
+
+            # Case 4: index column but no column names
+            if self.case == 4:
+                if index.column() == 0:
+                    return QVariant()
+                if self.formulaArray[index.row()][index.column()-1] != '':
+                    return str(self.formulaArray[index.row()][index.column()-1])
+
         else:
             return QVariant()
         
         return
 
+    def case_(self):
+        """
+        Returns the state of the table (index cols, header cols)
+        """
+        if self.suppress_column_names == True and self.display_index_col == False:
+            return 1
+        if self.suppress_column_names == False and self.display_index_col == False:
+            return 2
+        if self.suppress_column_names == False and self.display_index_col == True:
+            return 3
+        if self.suppress_column_names == True and self.display_index_col == True:
+            return 4
 
     def setData(self, index, value, role = Qt.DisplayRole):
         """
@@ -169,13 +205,22 @@ class QSpreadSheetModel(QAbstractItemModel):
         index (row/column) and the specified role (Display/Edit/Formula).
         """
         if value == '':
-            if self.suppress_column_names:
-                self.dataArray[index.row()][index.column()] = ''
-            elif index.row() == 0:
-                return False
-            else:
-                self.dataArray[index.row()-1][index.column()] = ''
-            self.formulaArray[index.row()][index.column()] = ''
+            if self.case == 1:
+                self.dataArray[index.row()][index.column()] == ''
+                self.formulaArray[index.row()][index.column()] = ''
+
+            if self.case == 2:
+                self.dataArray[index.row()-1][index.column()] == ''
+                self.formulaArray[index.row()-1][index.column()] = ''
+                
+            if self.case == 3:
+                self.dataArray[index.row()-1][index.column()-1] == ''
+                self.formulaArray[index.row()-1][index.column()-1] = ''
+
+            if self.case == 4:
+                self.dataArray[index.row()][index.column()-1] == ''
+                self.formulaArray[index.row()-1][index.column()-1] = ''
+            
             return True
         
         if isinstance(value, str) and value[0] == '=':
