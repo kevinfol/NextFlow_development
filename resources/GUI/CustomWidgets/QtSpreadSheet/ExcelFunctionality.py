@@ -145,7 +145,7 @@ def propogate_values(values, direction='down'):
         return values[-1].replace(str_list[-1], str(next_val))
 
 
-def replace_cell_with_value(cell, array_, headers_suppresed = True, index_col = False):
+def replace_cell_with_value(cell, array_, header_array = None, index_array = None, case = 1):
     """
     Replaces cells with format 'AA23' with 
     thier respective model array value
@@ -156,10 +156,29 @@ def replace_cell_with_value(cell, array_, headers_suppresed = True, index_col = 
     row = re.search(r'\d+', cell).group()
     row = int(row)
 
-    if headers_suppresed:
+    if case == 1:
         value = str(array_[row-1][column-1])
-    else:
-        value = str(array_[row-2][column-1])
+
+    elif case == 2:
+        if row == 1:
+            value = str(header_array[column-1])
+        else:
+            value = str(array_[row-2][column-1])
+
+    elif case == 3:
+        if row == 1:
+            value = str(header_array[column-1])
+        elif column == 1:
+            value = str(index_array[row - 2])
+        else:
+            value = str(array_[row-2][column-2])
+
+    elif case == 4:
+        if column == 1:
+            value = str(index_array[row - 1])
+        else:
+            value = str(array_[row-1][column-2])
+
     return value
 
 
@@ -183,7 +202,7 @@ def col_to_num(col):
         num = num * 26 + (ord(c.upper()) - ord('A')) + 1
     return int(num)
     
-def create_range(range_, arrayTest, headers_suppresed = True, index_col = False):
+def create_range(range_, arrayTest, header_array = None, index_array = None, case = 1):
     """
     Creates a range string from a start and end value
     'A1','A4' becomes 'A1,A2,A3,A4'
@@ -197,10 +216,30 @@ def create_range(range_, arrayTest, headers_suppresed = True, index_col = False)
     row_end = int(re.search(r'\d+', last_cell).group())
     for i in range(col_to_num(column_start), col_to_num(column_end)+1):
         for j in range(row_start, row_end+1):
-            if headers_suppresed:
+
+            if case == 1:
                 result_string.append(str(arrayTest[j-1][i-1]))
-            else:
-                result_string.append(str(arrayTest[j-2][i-1]))
+
+            elif case == 2:
+                if j == 1:
+                    result_string.append(str(header_array[i-1]))
+                else:
+                    result_string.append(str(arrayTest[j-2][i-1]))
+
+            elif case == 3:
+                if j == 1:
+                    result_string.append(str(header_array[i-1]))
+                elif i == 1:
+                    result_string.append(str(index_array[j-2]))
+                else:
+                    result_string.append(str(arrayTest[j-2][i-2]))
+
+            elif case == 4:
+                if i == 1:
+                    result_string.append(str(index_array[j-1]))
+                else:
+                    result_string.append(str(arrayTest[j-1][i-2]))
+
             
     return '[' + ','.join(result_string) + ']'
 

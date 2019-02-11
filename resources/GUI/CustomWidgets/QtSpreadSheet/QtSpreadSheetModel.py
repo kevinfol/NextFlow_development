@@ -61,20 +61,20 @@ class QSpreadSheetModel(QAbstractItemModel):
         self.case = self.case_()
 
         dataset = pd.DataFrame(dataset)
-        self.dataArray = dataset.values
+        self.dataArray = np.array(dataset.values, dtype='object')
 
         # Case 1: suppress_column_names, no index column
         if self.case == 1:
             self.indexArray = np.array([[self.createIndex(i, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
 
         # Case 2: column names and no index column
-        if self.case == 2:
+        elif self.case == 2:
             self.numRows += 1
             self.headerArray = np.array(dataset.columns.values)
             self.indexArray = np.array([[self.createIndex(0, i, val) for i, val in enumerate(self.headerArray)]] + [[self.createIndex(i+1, j, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
 
         # Case 3: column names and  index column
-        if self.case == 3:
+        elif self.case == 3:
             self.numColumns += 1
             self.numRows += 1
             self.headerArray = np.array([index_col_name] + list(dataset.columns.values), dtype='<U64')
@@ -82,7 +82,7 @@ class QSpreadSheetModel(QAbstractItemModel):
             self.indexArray = np.array([[self.createIndex(0, i, val) for i, val in enumerate(self.headerArray)]] + [[self.createIndex(i+1, 0, self.datasetIndexArray[i])] + [self.createIndex(i+1, j+1, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
         
         # Case 4: index column but no column names
-        if self.case == 4:
+        elif self.case == 4:
             self.numColumns += 1
             self.datasetIndexArray = np.array(dataset.index.get_level_values(0))
             self.indexArray = np.array([[self.createIndex(i, 0, self.datasetIndexArray[i])] + [self.createIndex(i, j+1, self.dataArray[i, j]) for j in range(len(row))] for i, row in enumerate(self.dataArray)])
@@ -134,13 +134,13 @@ class QSpreadSheetModel(QAbstractItemModel):
                 return str(self.dataArray[index.row()][index.column()])
 
             # Case 2: column names and no index column
-            if self.case == 2:
+            elif self.case == 2:
                 if index.row() == 0:
                     return str(self.headerArray[index.column()])
                 return str(self.dataArray[index.row() - 1][index.column()])
 
             # Case 3: column names and  index column
-            if self.case == 3:
+            elif self.case == 3:
                 if index.row() == 0:
                     return str(self.headerArray[index.column()])
                 if index.column() == 0:
@@ -148,7 +148,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                 return str(self.dataArray[index.row()-1][index.column()-1])
 
             # Case 4: index column but no column names
-            if self.case == 4:
+            elif self.case == 4:
                 if index.column() == 0:
                     return str(self.datasetIndexArray[index.row()-1])
                 return str(self.dataArray[index.row()][index.column()-1])
@@ -161,21 +161,21 @@ class QSpreadSheetModel(QAbstractItemModel):
                     return str(self.formulaArray[index.row()][index.column()])
             
             # Case 2: column names and no index column
-            if self.case == 2:
+            elif self.case == 2:
                 if index.row() == 0:
                     return QVariant()
                 if self.formulaArray[index.row()-1][index.column()] != '':
                     return str(self.formulaArray[index.row()-1][index.column()])
 
             # Case 3: column names and  index column
-            if self.case == 3:
+            elif self.case == 3:
                 if index.row() == 0 or index.column() == 0:
                     return QVariant()
                 if self.formulaArray[index.row()-1][index.column()-1] != '':
                     return str(self.formulaArray[index.row()-1][index.column()-1])
 
             # Case 4: index column but no column names
-            if self.case == 4:
+            elif self.case == 4:
                 if index.column() == 0:
                     return QVariant()
                 if self.formulaArray[index.row()][index.column()-1] != '':
@@ -192,11 +192,11 @@ class QSpreadSheetModel(QAbstractItemModel):
         """
         if self.suppress_column_names == True and self.display_index_col == False:
             return 1
-        if self.suppress_column_names == False and self.display_index_col == False:
+        elif self.suppress_column_names == False and self.display_index_col == False:
             return 2
-        if self.suppress_column_names == False and self.display_index_col == True:
+        elif self.suppress_column_names == False and self.display_index_col == True:
             return 3
-        if self.suppress_column_names == True and self.display_index_col == True:
+        elif self.suppress_column_names == True and self.display_index_col == True:
             return 4
 
     def setData(self, index, value, role = Qt.DisplayRole):
@@ -209,15 +209,15 @@ class QSpreadSheetModel(QAbstractItemModel):
                 self.dataArray[index.row()][index.column()] == ''
                 self.formulaArray[index.row()][index.column()] = ''
 
-            if self.case == 2:
+            elif self.case == 2:
                 self.dataArray[index.row()-1][index.column()] == ''
                 self.formulaArray[index.row()-1][index.column()] = ''
                 
-            if self.case == 3:
+            elif self.case == 3:
                 self.dataArray[index.row()-1][index.column()-1] == ''
                 self.formulaArray[index.row()-1][index.column()-1] = ''
 
-            if self.case == 4:
+            elif self.case == 4:
                 self.dataArray[index.row()][index.column()-1] == ''
                 self.formulaArray[index.row()-1][index.column()-1] = ''
             
@@ -226,66 +226,125 @@ class QSpreadSheetModel(QAbstractItemModel):
         if isinstance(value, str) and value[0] == '=':
             try:
                 formula = value
-                self.formulaArray[index.row()][index.column()] = formula
-                value = self.parse_excel_computation(formula)
-                if self.suppress_column_names:
+
+                if self.case == 1:
+                    self.formulaArray[index.row()][index.column()] = formula
+                    value = self.parse_excel_computation(formula)
                     self.dataArray[index.row()][index.column()] = value
-                elif index.row() == 0:
-                    return False
-                else:
+
+                elif self.case == 2:
+                    self.formulaArray[index.row()-1][index.column()] = formula
+                    value = self.parse_excel_computation(formula)
                     self.dataArray[index.row()-1][index.column()] = value
+
+                elif self.case == 3:
+                    self.formulaArray[index.row()-1][index.column()-1] = formula
+                    value = self.parse_excel_computation(formula)
+                    self.dataArray[index.row()-1][index.column()-1] = value
+
+                elif self.case == 4:
+                    self.formulaArray[index.row()][index.column()-1] = formula
+                    value = self.parse_excel_computation(formula)
+                    self.dataArray[index.row()][index.column()-1] = value
+
                 return True
+
             except Exception as E:
                 print(E)
                 traceback.print_exc()
-                if self.suppress_column_names:
+                if self.case == 1:
                     self.dataArray[index.row()][index.column()] = 'ERROR'
-                elif index.row() == 0:
-                    return False
-                else:
+
+                elif self.case == 2:
                     self.dataArray[index.row()-1][index.column()] = 'ERROR'
-                self.formulaArray[index.row()][index.column()] = value
+
+                elif self.case == 3:
+                    self.dataArray[index.row()-1][index.column()-1] = 'ERROR'
+
+                elif self.case == 4:
+                    self.dataArray[index.row()][index.column()-1] = 'ERROR'
+
                 return True
 
         if value == '%DELETEDATA%':
-            if self.suppress_column_names:
+            if self.case == 1:
                 self.dataArray[index.row()][index.column()] = ''
-            elif index.row() == 0:
-                return False
-            else:
+                self.formulaArray[index.row()][index.column()] = ''
+
+            elif self.case == 2:
                 self.dataArray[index.row()-1][index.column()] = ''
-            self.formulaArray[index.row()][index.column()] = ''
+                self.formulaArray[index.row()-1][index.column()] = ''
+
+            elif self.case == 3:
+                self.dataArray[index.row()-1][index.column()-1] = ''
+                self.formulaArray[index.row()-1][index.column()-1] = ''
+
+            elif self.case == 4:
+                self.dataArray[index.row()][index.column()] = ''
+                self.formulaArray[index.row()][index.column()-1] = ''
+
             return True
     
         try:
             value = float(value)
             if value%int(value) == 0:
                 value = int(value)
-                if self.suppress_column_names:
+
+                if self.case == 1:
                     self.dataArray[index.row()][index.column()] = value
-                elif index.row() == 0:
-                    return False
-                else:
+                    self.formulaArray[index.row()][index.column()] = ''
+
+                elif self.case == 2:
                     self.dataArray[index.row()-1][index.column()] = value
-                self.formulaArray[index.row()][index.column()] = ''
+                    self.formulaArray[index.row()-1][index.column()] = ''
+
+                elif self.case == 3:
+                    self.dataArray[index.row()-1][index.column()-1] = value
+                    self.formulaArray[index.row()-1][index.column()-1] = ''
+
+                elif self.case == 4:
+                    self.dataArray[index.row()][index.column()-1] = value
+                    self.formulaArray[index.row()][index.column()-1] = ''
+
                 return True
+
             else:
-                if self.suppress_column_names:
+
+                if self.case == 1:
                     self.dataArray[index.row()][index.column()] = value
-                elif index.row() == 0:
-                    return False
-                else:
+                    self.formulaArray[index.row()][index.column()] = ''
+
+                elif self.case == 2:
                     self.dataArray[index.row()-1][index.column()] = value
-                self.formulaArray[index.row()][index.column()] = ''
+                    self.formulaArray[index.row()-1][index.column()] = ''
+
+                elif self.case == 3:
+                    self.dataArray[index.row()-1][index.column()-1] = value
+                    self.formulaArray[index.row()-1][index.column()-1] = ''
+
+                elif self.case == 4:
+                    self.dataArray[index.row()][index.column()-1] = value
+                    self.formulaArray[index.row()][index.column()-1] = ''
+
                 return True
+
         except:
-            if self.suppress_column_names:
+            if self.case == 1:
                 self.dataArray[index.row()][index.column()] = str(value)
-            elif index.row() == 0:
-                return False
-            else:
+                self.formulaArray[index.row()][index.column()] = ''
+
+            elif self.case == 2:
                 self.dataArray[index.row()-1][index.column()] = str(value)
-            self.formulaArray[index.row()][index.column()] = ''
+                self.formulaArray[index.row()-1][index.column()] = ''
+
+            elif self.case == 3:
+                self.dataArray[index.row()-1][index.column()-1] = str(value)
+                self.formulaArray[index.row()-1][index.column()-1] = ''
+
+            elif self.case == 4:
+                self.dataArray[index.row()][index.column()-1] = str(value)
+                self.formulaArray[index.row()][index.column()-1] = ''
+
             return True
 
         return False
@@ -339,14 +398,29 @@ class QSpreadSheetModel(QAbstractItemModel):
         # Find ranges in the parse string (A34:B55)
         ranges = re.findall(r'[a-zA-Z]+[0-9]+:[a-zA-Z]+[0-9]+', parse_string)
         for range_ in ranges:
-            parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, self.suppress_column_names, self.display_index_col))
-        
+            if self.case == 1:
+                parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, case = self.case))
+            elif self.case == 2:
+                parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, header_array = self.headerArray, case = self.case))
+            elif self.case == 3:
+                parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, header_array = self.headerArray, index_array = self.datasetIndexArray, case = self.case))
+            elif self.case == 4:
+                parse_string = parse_string.replace(range_, ef.create_range(range_, self.dataArray, index_array = self.datasetIndexArray, case = self.case))
+
         # Find individual cells in the parse_string
         cell_names = re.findall(r'[a-zA-Z]+[0-9]+', parse_string)
         for cell in cell_names:
             if cell in re.findall(r'{0}(?=\()'.format(cell), parse_string):
                 continue
-            parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, self.suppress_column_names, self.display_index_col))
+            if self.case == 1:
+                parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, case = self.case))
+            elif self.case == 2:
+                parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, header_array = self.headerArray, case = self.case))
+            elif self.case == 3:
+                parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, header_array = self.headerArray, index_array = self.datasetIndexArray, case = self.case))
+            elif self.case == 4:
+                parse_string = parse_string.replace(cell, ef.replace_cell_with_value(cell, self.dataArray, index_array = self.datasetIndexArray, case = self.case))
+
 
         value = float(eval(parse_string))
         if int(value) == 0:

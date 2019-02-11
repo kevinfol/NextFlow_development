@@ -22,9 +22,10 @@ from datetime import datetime
 from resources.GUI import NextFlowGUI
 from resources.modules.DatasetTab import datasetTabMaster 
 from resources.modules.DataTab import dataTabMaster
+from resources.modules.MenuBar import menuBarMaster
 import pandas as pd
 
-class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMaster.datasetTab, dataTabMaster.dataTab):
+class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMaster.datasetTab, dataTabMaster.dataTab, menuBarMaster.menuBar):
     """
     GLOBAL APPLICATION SETTINGS
     This section of the script deals with the initialization of the software. These subroutines 
@@ -103,7 +104,7 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         # Set up tabs
         self.setupDatasetTab()
         self.setupDataTab()
-
+        self.setupMenuBar()
         # Intiate a threadpool
         self.threadPool = QtCore.QThreadPool()
 

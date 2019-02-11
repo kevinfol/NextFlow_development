@@ -106,6 +106,16 @@ class dataTab(object):
         self.dataDisplayTable = self.dataTable.loc[pd.IndexSlice[:,:,0], :] # Returns only the "0"-version data
         self.dataDisplayTable.set_index([self.dataDisplayTable.index.get_level_values(0), self.dataDisplayTable.index.get_level_values(1)], inplace=True) # Remove the version index
         self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index
-        #self.dataDisplayTable.insert(loc=0, column='Datetime', value=list(self.dataDisplayTable.index.get_level_values(0)))
         self.dataDisplayTable.columns = [self.datasetTable.loc[i]['DatasetName'] for i in list(self.dataDisplayTable.columns)]
         self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False, display_index_col=True, index_col_name='Datetime')
+
+    def plotClickedColumns(self):
+        """
+        This function plots the columns that the user selects
+        """
+        currentDataset = self.dataTab.table.getCurrentDataFrame()
+        currentColumns = self.dataTab.table.getSelectedColumns()
+        for column in currentColumns:
+            if column == 'Datetime':
+                continue
+            

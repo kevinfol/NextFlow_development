@@ -85,6 +85,54 @@ class QSpreadSheetWidget(QTableView):
         self.setFocusPolicy(Qt.StrongFocus)
         return
 
+    def getSelectedRows(self):
+        """
+        Returns the selected rows
+        """
+        return list(set([i.row() for i in self.selectedIndexes]))
+
+    def getSelectedColumns(self):
+        """
+        Returns the selected columns (either from headerArray, or from column number)
+        """
+        if self.model().case == 1 or self.model().case == 4:
+            return list(set([i.column() for i in self.selectedIndexes]))
+        else:
+            return list(set([self.headerArray[i.column()] for i in self.selectedIndexes]))
+
+    def getCurrentDataFrame(self):
+        """
+        Returns the current data in the table as a formatted datatable
+        """
+        case = self.model().case
+        if case == 1:
+            return pd.DataFrame(self.model().dataArray)
+        elif case == 2:
+            return pd.DataFrame(self.model().dataArray, columns=self.model().headerArray)
+        elif case == 3:
+            idx = self.model().datasetIndexArray
+            if all(isinstance(x, datetime.datetime) for x in idx):
+                idx = pd.DatetimeIndex(idx)
+            return pd.DataFrame(self.model().dataArray, columns=self.model().headerArray[1:], index=idx)
+        elif case == 4:
+            idx = self.model().datasetIndexArray
+            if all(isinstance(x, datetime.datetime) for x in idx):
+                idx = pd.DatetimeIndex(idx)
+            return pd.DataFrame(self.model().dataArray, index=idx)
+
+    def getCurrentDataArrays(self):
+        """
+        Returns the current data in the table as a list of [dataArray, headerArray, indexArray]
+        """
+        case = self.model().case
+        if case == 1:
+            return np.array(self.model().dataArray), None, None
+        elif case == 2:
+            return np.array(self.model().dataArray), np.array(self.model().headerArray()), None
+        elif case == 3:
+            return np.array(self.model().dataArray), np.array(self.model().headerArray()), np.array(self.model().datasetIndexArray)
+        elif case == 4:
+            return np.array(self.model().dataArray), None, np.array(self.model().datasetIndexArray)
 
     def paintEvent(self, event):
         paintEvent.paintEvent(self, event)
