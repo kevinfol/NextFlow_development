@@ -2,6 +2,7 @@ from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
 from resources.GUI.CustomWidgets.MatplotlibPlots import TimeSeriesDataPlot, NavigationToolbar
+from resources.GUI.CustomWidgets.PyQtGraphs import TimeSeriesSliderPlot
 from resources.GUI.CustomWidgets.QtSpreadSheet.QtSpreadSheet import QSpreadSheetWidget
 import  sys
 import  os
@@ -41,15 +42,15 @@ class DataTab(QtWidgets.QWidget):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        self.dataPlot = TimeSeriesDataPlot()
-        dataNav = NavigationToolbar(self.dataPlot, self)
-        dataNav.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
-        widg = QtWidgets.QWidget()
-        layout_ = QtWidgets.QVBoxLayout()
-        layout_.addWidget(self.dataPlot)
-        layout_.addWidget(dataNav)
-        widg.setLayout(layout_)
-        splitter.addWidget(widg)
+        self.dataPlot = TimeSeriesSliderPlot()
+        #dataNav = NavigationToolbar(self.dataPlot, self)
+        #dataNav.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        #widg = QtWidgets.QWidget()
+        #layout_ = QtWidgets.QVBoxLayout()
+        #layout_.addWidget(self.dataPlot)
+        #layout_.addWidget(dataNav)
+        #widg.setLayout(layout_)
+        splitter.addWidget(self.dataPlot)
 
         self.table = QSpreadSheetWidget()
         splitter.addWidget(self.table)

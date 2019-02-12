@@ -8,7 +8,8 @@ from PyQt5.QtCore       import  (Qt,
                                 QRect,
                                 QAbstractItemModel,
                                 QVariant,
-                                QDateTime)
+                                QDateTime,
+                                pyqtSignal)
 from PyQt5.QtGui        import  (QColor,
                                 QPainter,
                                 QBrush,
@@ -27,6 +28,8 @@ import pandas as pd
 import re
 import os
 import time
+
+
 
 class QSpreadSheetWidget(QTableView):
     """
@@ -80,7 +83,6 @@ class QSpreadSheetWidget(QTableView):
 
         # Set the widgets' stylesheet
         colorCode = '#%02x%02x%02x' % (self.highlightColor.red(), self.highlightColor.green(), self.highlightColor.blue())
-        print(colorCode)
         self.setStyleSheet(open(os.path.abspath('resources/GUI/CustomWidgets/QtSpreadSheet/style.qss'), 'r').read().format(colorCode))
         self.setFocusPolicy(Qt.StrongFocus)
         return
@@ -96,10 +98,16 @@ class QSpreadSheetWidget(QTableView):
         Returns the selected columns (either from headerArray, or from column number)
         """
         if self.model().case == 1 or self.model().case == 4:
-            return list(set([i.column() for i in self.selectedIndexes]))
+            cols = [i.column() for i in self.selectedIndexes()]
+            while 0 in cols:
+                cols.pop(cols.index(0))
+            return list(set(cols))
         else:
-            return list(set([self.headerArray[i.column()] for i in self.selectedIndexes]))
-
+            cols = [self.model().headerArray[i.column()] for i in self.selectedIndexes()]
+            while 'Datetime' in cols:
+                cols.pop(cols.index('Datetime'))
+            return list(set(cols))
+            
     def getCurrentDataFrame(self):
         """
         Returns the current data in the table as a formatted datatable

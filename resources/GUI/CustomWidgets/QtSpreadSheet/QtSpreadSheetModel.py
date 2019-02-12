@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QAbstractItemModel, QModelIndex, QVariant, Qt
+from PyQt5.QtCore import QAbstractItemModel, QModelIndex, QVariant, Qt, pyqtSignal
 
 import traceback
 from resources.GUI.CustomWidgets.QtSpreadSheet import ExcelFunctionality as ef
@@ -11,6 +11,8 @@ class QSpreadSheetModel(QAbstractItemModel):
     QSpreadSheetModel class is a subclass of QAbstractItemModel that
     provides additional functionality to the itemmodel.
     """
+
+    changedDataSignal = pyqtSignal(list)
 
     def __init__(self, parent = None, *args, **kwargs):
         """
@@ -204,23 +206,45 @@ class QSpreadSheetModel(QAbstractItemModel):
         This function sets the data in the model associated with the
         index (row/column) and the specified role (Display/Edit/Formula).
         """
+        oldValue = self.data(index)
+
+        if self.case == 1:
+            idx = index.row()
+            col = index.column()
+
+        elif self.case == 2:
+            idx = index.row() - 1
+            col = self.headerArray[index.column()]
+
+        elif self.case == 3:
+            idx = self.datasetIndexArray[index.row() - 1]
+            col = self.headerArray[index.column() - 1]
+
+        elif self.case == 4:
+            idx = self.datasetIndexArray[index.row()]
+            col = index.column() - 1
+
         if value == '':
             if self.case == 1:
                 self.dataArray[index.row()][index.column()] == ''
                 self.formulaArray[index.row()][index.column()] = ''
+                
 
             elif self.case == 2:
                 self.dataArray[index.row()-1][index.column()] == ''
                 self.formulaArray[index.row()-1][index.column()] = ''
                 
+                
             elif self.case == 3:
                 self.dataArray[index.row()-1][index.column()-1] == ''
                 self.formulaArray[index.row()-1][index.column()-1] = ''
+                
 
             elif self.case == 4:
                 self.dataArray[index.row()][index.column()-1] == ''
                 self.formulaArray[index.row()-1][index.column()-1] = ''
             
+            self.changedDataSignal.emit([idx, col, oldValue, ''])
             return True
         
         if isinstance(value, str) and value[0] == '=':
@@ -247,6 +271,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                     value = self.parse_excel_computation(formula)
                     self.dataArray[index.row()][index.column()-1] = value
 
+                self.changedDataSignal.emit([idx, col, oldValue, value])
                 return True
 
             except Exception as E:
@@ -264,6 +289,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                 elif self.case == 4:
                     self.dataArray[index.row()][index.column()-1] = 'ERROR'
 
+                self.changedDataSignal.emit([idx, col, oldValue, np.nan])
                 return True
 
         if value == '%DELETEDATA%':
@@ -283,6 +309,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                 self.dataArray[index.row()][index.column()] = ''
                 self.formulaArray[index.row()][index.column()-1] = ''
 
+            self.changedDataSignal.emit([idx, col, oldValue, ''])
             return True
     
         try:
@@ -306,6 +333,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                     self.dataArray[index.row()][index.column()-1] = value
                     self.formulaArray[index.row()][index.column()-1] = ''
 
+                self.changedDataSignal.emit([idx, col, oldValue, value])
                 return True
 
             else:
@@ -326,6 +354,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                     self.dataArray[index.row()][index.column()-1] = value
                     self.formulaArray[index.row()][index.column()-1] = ''
 
+                self.changedDataSignal.emit([idx, col, oldValue, value])
                 return True
 
         except:
@@ -345,6 +374,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                 self.dataArray[index.row()][index.column()-1] = str(value)
                 self.formulaArray[index.row()][index.column()-1] = ''
 
+            self.changedDataSignal.emit([idx, col, oldValue, str(value)])
             return True
 
         return False
@@ -374,7 +404,20 @@ class QSpreadSheetModel(QAbstractItemModel):
         This function returns the flag associated with the model data
         at the given index (row/column)
         """
-        return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable 
+        if self.case == 1:
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable 
+        elif self.case == 2:
+            if index.row() == 0:
+                return Qt.ItemIsEnabled
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable 
+        elif self.case == 3:
+            if index.row() == 0 or index.column() == 0:
+                return Qt.ItemIsEnabled
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable 
+        elif self.case == 4:
+            if index.column() == 0:
+                return Qt.ItemIsEnabled
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable 
         
 
     def parse_excel_computation(self, parse_string):
