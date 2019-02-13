@@ -127,6 +127,24 @@ class QSpreadSheetModel(QAbstractItemModel):
         """
         if not index.isValid():
             return QVariant()
+
+        if role == 'actualData':
+            if self.case == 1:
+                return self.dataArray[index.row()][index.column()]
+            elif self.case == 2:
+                if index.row() == 0:
+                    return self.headerArray[index.column()]
+                return self.dataArray[index.row() - 1][index.column()]
+            elif self.case == 3:
+                if index.row() == 0:
+                    return self.headerArray[index.column()]
+                if index.column() == 0:
+                    return self.datasetIndexArray[index.row()-1]
+                return self.dataArray[index.row()-1][index.column()-1]
+            elif self.case == 4:
+                if index.column() == 0:
+                    return self.datasetIndexArray[index.row()-1]
+                return self.dataArray[index.row()][index.column()-1]
         
         elif role == Qt.DisplayRole:
 
@@ -206,7 +224,7 @@ class QSpreadSheetModel(QAbstractItemModel):
         This function sets the data in the model associated with the
         index (row/column) and the specified role (Display/Edit/Formula).
         """
-        oldValue = self.data(index)
+        oldValue = self.data(index, role = "actualData")
 
         if self.case == 1:
             idx = index.row()
@@ -218,7 +236,7 @@ class QSpreadSheetModel(QAbstractItemModel):
 
         elif self.case == 3:
             idx = self.datasetIndexArray[index.row() - 1]
-            col = self.headerArray[index.column() - 1]
+            col = self.headerArray[index.column()]
 
         elif self.case == 4:
             idx = self.datasetIndexArray[index.row()]

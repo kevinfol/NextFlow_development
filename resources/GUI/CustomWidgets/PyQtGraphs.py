@@ -51,8 +51,10 @@ class TimeAxisItem(pg.AxisItem):
     def tickSpacing(self, minVal, maxVal, size):
         """
         """
-        if maxVal - minVal >= 10*365.24*86400:
+        if maxVal - minVal >= 15*365.24*86400:
             return [(10*365.24*86400, 0), (10*365.24*86400, 0)]
+        elif maxVal - minVal >= 6*365.24*86400:
+            return [(4*365.24*86400, 0), (4*365.24*86400, 0)]
         elif maxVal - minVal >= 365.24*86400:
             return [(365.24*86400, 0), (365.24*86400, 0)]
         elif maxVal - minVal >= 45*86400:
@@ -72,9 +74,11 @@ class TimeAxisItem(pg.AxisItem):
         """
         Rename the tick strings from EPOCH integers to datetime strings
         """
+        if spacing > 7*365.24*86400:
+            return [datetime.utcfromtimestamp(value).strftime('%Y-%m') for value in values]
         return [datetime.utcfromtimestamp(value).strftime('%Y-%m-%d') for value in values]
 
-class TimeSeriesSliderPlot(pg.GraphicsWindow):
+class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
     """
     Example taken from pyqtgraph/examples/crosshair.py
     """
@@ -83,14 +87,18 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         
         
         # Create plots
-        self.p1 = self.addPlot(row=0, col=0, axisItems={"bottom":TimeAxisItem(orientation="bottom")})
-        self.p2 = self.addPlot(row=1, col=0, axisItems={"bottom":TimeAxisItem(orientation="bottom")})
-
+        self.p1 = self.addPlot(row=0, col=0, rowspan=8, axisItems={"bottom":TimeAxisItem(orientation="bottom")})
+        self.p2 = self.addPlot(row=8, col=0, axisItems={"bottom":TimeAxisItem(orientation="bottom")})
+        
+        [self.ci.layout.setRowMinimumHeight(i, 50) for i in range(9)]
         # Create the slider region
         self.region = pg.LinearRegionItem()
         self.region.setZValue(10)
         self.p1.addLegend()
         self.p2.addItem(self.region, ignoreBounds=True)
+        self.p1.setMenuEnabled(False)
+        self.p2.setMenuEnabled(False)
+        
         #self.p1.setAutoVisible(y=True)
 
         self.region.sigRegionChanged.connect(self.update)
@@ -107,6 +115,13 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         pos = QtCore.QPoint(event.x(), event.y())
         if self.p1.sceneBoundingRect().contains(pos):
             mousePoint = self.p1.vb.mapSceneToView(pos)
+            x_ = mousePoint.x()
+            y_ = mousePoint.y()
+            idx = int(x_ - x_%86400)
+            ts = datetime.utcfromtimestamp(idx).strftime('%Y-%m-%d')
+            if hasattr(self, "crossHairText"):
+                self.crossHairText.setText(ts + '\n' + str(np.round(y_,2)))
+                self.crossHairText.setPos(x_, y_)
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
         
@@ -121,23 +136,44 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         self.region.setZValue(10)
         self.region.setRegion(rgn)
     
-    def add_data_to_plots(self, dataFrame, types = None, fill_below=True):
+    def add_data_to_plots(self, dataFrame, types = None, fill_below=True, keep_bounds = False, changed_col = None):
         """
         """
+        
+        cc = colorCycler()
+        self.dataFrame = dataFrame.apply(lambda x: pd.to_numeric(x, errors='coerce'))
+        self.dataFrame.set_index(pd.Int64Index(self.dataFrame.index.astype(np.int64)), inplace=True)
+        self.dataFrame.index = self.dataFrame.index/1000000000
+        mn = min(self.dataFrame.min())
+        mx = max(self.dataFrame.max())
+        rg = mx - mn
+        xmn = self.dataFrame.index.get_level_values(0)[0]
+        xmx = self.dataFrame.index.get_level_values(0)[-1]
+        xrg = xmx - xmn
+        if keep_bounds:
+            current_bounds = self.p1.vb.viewRange()
+            y = np.array(self.dataFrame[changed_col].values, dtype="float")
+            x = np.array(self.dataFrame.index.get_level_values(0), dtype="int64")
+            missing = np.isnan(y)
+            x_ = x[~missing]
+            y_ = y[~missing]
+            dataItemsP1 = self.p1.listDataItems()
+            dataItemsP1Names = [item.opts['name'] for item in dataItemsP1]
+            dataItemsP2 = self.p2.listDataItems()
+            dataItemsP2Names = [item.opts['name'] for item in dataItemsP2]
+            p1Item = dataItemsP1[dataItemsP1Names.index(changed_col)]
+            p2Item = dataItemsP2[dataItemsP2Names.index(changed_col)]
+            p1Item.setData(x_, y_)
+            p2Item.setData(x_, y_)
+            self.p1.vb.setRange(xRange = current_bounds[0], yRange = current_bounds[1])
+            return
+
         [self.p1.removeItem(i) for i in self.p1.listDataItems()]
         [self.p2.removeItem(i) for i in self.p2.listDataItems()]
         self.p1.legend.scene().removeItem(self.p1.legend)
+        if hasattr(self, "crossHairText"):
+            self.p1.removeItem(self.crossHairText)
         self.p1.addLegend()
-        cc = colorCycler()
-        dataFrame = dataFrame.apply(lambda x: pd.to_numeric(x, errors='coerce'))
-        dataFrame.set_index(pd.Int64Index(dataFrame.index.astype(np.int64)), inplace=True)
-        dataFrame.index = dataFrame.index/1000000000
-        mn = min(dataFrame.min())
-        mx = max(dataFrame.max())
-        rg = mx - mn
-        xmn = dataFrame.index.get_level_values(0)[0]
-        xmx = dataFrame.index.get_level_values(0)[-1]
-        xrg = xmx - xmn
         self.p2.setLimits(  xMin = xmn, 
                             xMax = xmx, 
                             yMin = mn, 
@@ -146,15 +182,17 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
                             minYRange = rg)
         self.p1.setLimits(  xMin = xmn, 
                             xMax = xmx, 
-                            yMin = mn - rg/3, 
-                            yMax = mx + rg/3)
+                            yMin = mn - rg/5, 
+                            yMax = mx + rg/5,
+                            maxYRange = rg + 2*rg/5)
+        self.p1.setRange(yRange = [mn, mx])
         if types == None:
             types = ['line' for col in dataFrame.columns]
         if len(types) != len(dataFrame.columns):
             return
-        for i, col in enumerate(dataFrame.columns):
-            y = np.array(dataFrame[col].values, dtype="float")
-            x = np.array(dataFrame.index.get_level_values(0), dtype="int64")
+        for i, col in enumerate(self.dataFrame.columns):
+            y = np.array(self.dataFrame[col].values, dtype="float")
+            x = np.array(self.dataFrame.index.get_level_values(0), dtype="int64")
             missing = np.isnan(y)
             x_ = x[~missing]
             y_ = y[~missing]
@@ -172,6 +210,9 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         self.region.setRegion([x_[0], x_[-1]])
         self.region.setBounds([x_[0], x_[-1]])
         self.region.setZValue(10)
+        #self.p2.axes['left']['item'].setTicks([(mx, str(mx))])
+        self.crossHairText = pg.TextItem(anchor=(0,1), color = (45,45,45))
+        self.p1.addItem(self.crossHairText)
 
         return
 

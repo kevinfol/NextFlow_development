@@ -108,21 +108,35 @@ class dataTab(object):
         self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index
         self.dataDisplayTable.columns = [self.datasetTable.loc[i]['DatasetName'] for i in list(self.dataDisplayTable.columns)]
         self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False, display_index_col=True, index_col_name='Datetime')
-        self.dataTab.table.model().changedDataSignal.connect(lambda x: print(x))
+        self.dataTab.table.model().changedDataSignal.connect(self.userChangedData)
         self.dataTab.table.horizontalHeader().sectionClicked.connect(lambda x: self.plotClickedColumns())
-        self.plotClickedColumns(self.dataDisplayTable.columns[0])
+        self.plotClickedColumns([self.dataDisplayTable.columns[0]])
 
-    def plotClickedColumns(self, displayColumn = None):
+    def userChangedData(self, dataChanges):
+        """
+        """
+        old_value = self.dataDisplayTable.loc[dataChanges[0]][dataChanges[1]]
+        if dataChanges[2] == old_value:
+            self.dataDisplayTable.loc[dataChanges[0]][dataChanges[1]] = dataChanges[3]
+            try:
+                value = float(dataChanges[3])
+            except:
+                value = np.nan
+            self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 1]] = old_value
+            self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 0]] = value
+        self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, keep_current_bounds=True, changed_col=dataChanges[1])
+
+    def plotClickedColumns(self, displayColumns = None, keep_current_bounds = False, changed_col = None):
         """
         This function plots the columns that the user selects
         """
         currentDataset = self.dataTab.table.getCurrentDataFrame()
-        if displayColumn != None:
-            self.currentlyPlottedColumns = [displayColumn]
+        if displayColumns != None:
+            self.currentlyPlottedColumns = displayColumns
         else:
             self.currentlyPlottedColumns = self.dataTab.table.getSelectedColumns()
             if self.currentlyPlottedColumns == [] or self.currentlyPlottedColumns == None:
                 return
         dataset = currentDataset[self.currentlyPlottedColumns]
-        self.dataTab.dataPlot.add_data_to_plots(dataset)
+        self.dataTab.dataPlot.add_data_to_plots(dataset, keep_bounds = keep_current_bounds, changed_col = changed_col)
             
