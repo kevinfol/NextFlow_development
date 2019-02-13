@@ -5,9 +5,40 @@ from PyQt5 import QtWidgets
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from pyqtgraph.graphicsItems.LegendItem import LegendItem, ItemSample
+
+def updateSize_(self):
+    if self.size is not None:
+        return
+        
+    height = 0
+    width = 0
+    #print("-------")
+    for sample, label in self.items:
+        height += max(sample.boundingRect().height(), label.height()) + 3
+        width = max(width, sample.boundingRect().width()+label.width())
+        #print(width, height)
+    #print width, height
+    self.setGeometry(0, 0, width+25, height)
+
+def addItem_(self, item, name):
+    label = pg.LabelItem(name, justify='left')
+    if isinstance(item, ItemSample):
+        sample = item
+    else:
+        sample = ItemSample(item)        
+    row = self.layout.rowCount()
+    self.items.append((sample, label))
+    self.layout.addItem(sample, row, 0)
+    self.layout.addItem(label, row, 1)
+    self.updateSize()
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
+
+LegendItem.addItem = addItem_
+LegendItem.updateSize = updateSize_
+LegendItem.mouseDragEvent = lambda s, e: None
 
 class TimeAxisItem(pg.AxisItem):
     """
@@ -59,7 +90,6 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         self.region = pg.LinearRegionItem()
         self.region.setZValue(10)
         self.p1.addLegend()
-        self.p2.addLegend()
         self.p2.addItem(self.region, ignoreBounds=True)
         #self.p1.setAutoVisible(y=True)
 
@@ -97,13 +127,27 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
         [self.p1.removeItem(i) for i in self.p1.listDataItems()]
         [self.p2.removeItem(i) for i in self.p2.listDataItems()]
         self.p1.legend.scene().removeItem(self.p1.legend)
-        self.p2.legend.scene().removeItem(self.p2.legend)
         self.p1.addLegend()
-        self.p2.addLegend()
         cc = colorCycler()
         dataFrame = dataFrame.apply(lambda x: pd.to_numeric(x, errors='coerce'))
         dataFrame.set_index(pd.Int64Index(dataFrame.index.astype(np.int64)), inplace=True)
         dataFrame.index = dataFrame.index/1000000000
+        mn = min(dataFrame.min())
+        mx = max(dataFrame.max())
+        rg = mx - mn
+        xmn = dataFrame.index.get_level_values(0)[0]
+        xmx = dataFrame.index.get_level_values(0)[-1]
+        xrg = xmx - xmn
+        self.p2.setLimits(  xMin = xmn, 
+                            xMax = xmx, 
+                            yMin = mn, 
+                            yMax = mx,
+                            minXRange = xrg,
+                            minYRange = rg)
+        self.p1.setLimits(  xMin = xmn, 
+                            xMax = xmx, 
+                            yMin = mn - rg/3, 
+                            yMax = mx + rg/3)
         if types == None:
             types = ['line' for col in dataFrame.columns]
         if len(types) != len(dataFrame.columns):
@@ -126,9 +170,11 @@ class TimeSeriesSliderPlot(pg.GraphicsWindow):
                 self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=col)
             
         self.region.setRegion([x_[0], x_[-1]])
+        self.region.setBounds([x_[0], x_[-1]])
         self.region.setZValue(10)
 
         return
+
 
 class colorCycler():
     def __init__(self):
