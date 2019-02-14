@@ -1,9 +1,10 @@
 import pandas as pd
-from resources.modules.Miscellaneous import ConfigurationParsing, loggingAndErrors
+from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DatasetTab import gisFunctions
 from fuzzywuzzy.fuzz import WRatio 
 import multiprocessing as mp
 import itertools
+from time import sleep
 import ast
 
 
@@ -20,6 +21,36 @@ class datasetTab(object):
         self.loadAdditionalDatasetLists()
         self.connectEventsDatasetTab()
         self.loadGISDataToWebMap()
+        
+
+        return
+    
+    def resetDatasetTab(self):
+        """
+        Resets the tab to reflect any backend changes to the datasettables, views, etc.
+        """
+        loc = self.userOptionsConfig['DATASETS TAB']['current_map_location']
+        print(loc)
+        layers = self.userOptionsConfig['DATASETS TAB']['current_map_layers']
+
+        self.datasetTab.webMapView.page.runJavaScript("zoomToLoc({0},{1},{2})".format(loc[0], loc[1], loc[2]))
+        self.datasetTab.webMapView.page.runJavaScript("setActiveLayers({0})".format(layers))
+        self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+    
+    def storeMapInformation(self):
+        """
+        """
+        
+        def storeMapLocation(loc):
+            loc = loc.split(":")[1]
+            self.userOptionsConfig['DATASETS TAB']['current_map_location'] = loc
+            print(loc)
+        def storeMapLayers(layers):
+            layers = layers.split(":")[1]
+            self.userOptionsConfig['DATASETS TAB']['current_map_layers'] = layers
+
+        self.datasetTab.webMapView.page.runJavaScript("getLocation()", storeMapLocation)
+        self.datasetTab.webMapView.page.runJavaScript("getActiveLayers()", storeMapLayers)
 
         return
 
@@ -40,9 +71,11 @@ class datasetTab(object):
         """
         print(hucNumber)
         validHUCs = list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'WATERSHED']['DatasetExternalID'])
+        
         if hucNumber in validHUCs:
             return True
         return False
+        
 
     def connectEventsDatasetTab(self):
         """

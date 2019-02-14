@@ -1,4 +1,4 @@
-from resources.modules.Miscellaneous import ConfigurationParsing, loggingAndErrors
+from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DataTab import downloadData
 import time
 import pandas as pd
@@ -11,10 +11,31 @@ class dataTab(object):
     def setupDataTab(self):
         """
         """
-        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(ConfigurationParsing.readConfig('application_datetime')), '%Y'))
+        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime']), '%Y'))
         self.dataTab.downloadButton.clicked.connect(self.downloadData)
         self.dataTab.updateButton.clicked.connect(lambda: self.downloadData(option="UpdateStaleData"))
+        self.currentlyPlottedColumns = []
 
+        return
+
+    def resetDataTab(self):
+        """
+        """
+        self.displayDataInTable()
+        self.currentlyPlottedColumns = ConfigurationParsing.readUserOptions('current_plotted_columns').split(',')
+        self.plotClickedColumns(self.currentlyPlottedColumns)
+        current_bounds = ConfigurationParsing.readUserOptions('current_plot_bounds').split(',')
+        self.dataTab.dataPlot.p1.vb.setRange(xRange = [float(current_bounds[0]),float(current_bounds[1])], yRange = [float(current_bounds[2]),float(current_bounds[3])])
+
+
+        return
+    
+    def storeDataTabInformation(self):
+        """
+        """
+        self.userOptionsConfig['DATA TAB']['por_start'] = self.dataTab.porT1.text()
+        self.userOptionsConfig['DATA TAB']['current_plotted_columns'] = ','.join(self.currentlyPlottedColumns)
+        self.userOptionsConfig['DATA TAB']['current_plot_bounds'] = ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[0]) + ',' + ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[1])
         return
 
     def downloadData(self, option='FreshDownload'):
@@ -35,7 +56,7 @@ class dataTab(object):
         porT2 = self.dataTab.porT2.text()
         try:
             porT1 = pd.to_datetime(porT1+'-10-01')
-            porT2 = pd.to_datetime(ConfigurationParsing.readConfig('application_datetime'))
+            porT2 = pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime'])
         except Exception as E:
             loggingAndErrors.showErrorMessage('Could not parse POR input: {0}'.format(E))
             return

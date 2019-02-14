@@ -323,6 +323,49 @@ function getBBCoords() {
     return `COORDS:${nwlat}|${nwlong}|${selat}|${selong}`
 }
 
+function setActiveLayers(layers) {
+    window.layerControl._layers.forEach(function (obj) {
+        if (obj.overlay == true) {
+            window.map.removeLayer(obj.layer);
+        }
+    });
+    layers.forEach(function(lay){
+        window.layerControl._layers.forEach(function (obj) {
+            if (lay == obj.name) {
+                window.map.addLayer(obj.layer);
+            }
+        });
+    })
+};
+    
+
+
+
+function getActiveLayers() {
+    var active = [];
+    window.layerControl._layers.forEach(function (obj) {
+        if (window.map.hasLayer(obj.layer)) {
+            
+            active.push(obj.name);
+            
+            
+        }
+    })
+    return `ACTIVELAYERS:${active}`;
+}
+
+function getLocation() {
+    latlong = window.map.getCenter();
+    lt = latlong.lat;
+    lg = latlong.lng;
+    zoom = window.map.getZoom();
+    return `POSITION:${lt}|${lg}|${zoom}`
+}
+
+function zoomToLoc(lat, long, zoomLevel) {
+    window.map.setView([lat, long], zoomLevel)
+}
+
 // Function to find center of polygon
 function getCenter(feat, ev) {
     var lats = 0;

@@ -23,7 +23,10 @@ from resources.GUI import NextFlowGUI
 from resources.modules.DatasetTab import datasetTabMaster 
 from resources.modules.DataTab import dataTabMaster
 from resources.modules.MenuBar import menuBarMaster
+from resources.modules.Miscellaneous import initUserOptions
+import configparser
 import pandas as pd
+
 
 class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMaster.datasetTab, dataTabMaster.dataTab, menuBarMaster.menuBar):
     """
@@ -100,11 +103,19 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             "Key",
             "Identifier",
             "Value"])
+        
+        
+        
+        initUserOptions.initOptions()
+        self.userOptionsConfig = configparser.ConfigParser()
+        self.userOptionsConfig.read('resources/temp/user_set_options.txt')
+        self.applicationPrefsConfig = configparser.ConfigParser()
+        self.applicationPrefsConfig.read('resources/application_prefs.ini')
 
-        # Set up tabs
         self.setupDatasetTab()
         self.setupDataTab()
         self.setupMenuBar()
+
         # Intiate a threadpool
         self.threadPool = QtCore.QThreadPool()
 
