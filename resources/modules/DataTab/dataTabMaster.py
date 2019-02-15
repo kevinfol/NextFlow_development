@@ -21,10 +21,12 @@ class dataTab(object):
     def resetDataTab(self):
         """
         """
+        if self.dataTable.empty:
+            return
         self.displayDataInTable()
-        self.currentlyPlottedColumns = ConfigurationParsing.readUserOptions('current_plotted_columns').split(',')
+        self.currentlyPlottedColumns = self.userOptionsConfig['DATA TAB']['current_plotted_columns'].split(',')
         self.plotClickedColumns(self.currentlyPlottedColumns)
-        current_bounds = ConfigurationParsing.readUserOptions('current_plot_bounds').split(',')
+        current_bounds = self.userOptionsConfig['DATA TAB']['current_plot_bounds'].split(',')
         self.dataTab.dataPlot.p1.vb.setRange(xRange = [float(current_bounds[0]),float(current_bounds[1])], yRange = [float(current_bounds[2]),float(current_bounds[3])])
 
 
@@ -124,6 +126,8 @@ class dataTab(object):
         """
         This function takes the dataTable and converts it into a spreadsheet-like datatable. 
         """
+        if self.dataTable.empty:
+            return
         self.dataDisplayTable = self.dataTable.loc[pd.IndexSlice[:,:,0], :] # Returns only the "0"-version data
         self.dataDisplayTable.set_index([self.dataDisplayTable.index.get_level_values(0), self.dataDisplayTable.index.get_level_values(1)], inplace=True) # Remove the version index
         self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index

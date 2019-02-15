@@ -29,9 +29,9 @@ class datasetTab(object):
         """
         Resets the tab to reflect any backend changes to the datasettables, views, etc.
         """
-        loc = self.userOptionsConfig['DATASETS TAB']['current_map_location']
+        loc = self.userOptionsConfig['DATASETS TAB']['current_map_location'].split(":")[1].split("|")
         print(loc)
-        layers = self.userOptionsConfig['DATASETS TAB']['current_map_layers']
+        layers = self.userOptionsConfig['DATASETS TAB']['current_map_layers'].split(":")[1]
 
         self.datasetTab.webMapView.page.runJavaScript("zoomToLoc({0},{1},{2})".format(loc[0], loc[1], loc[2]))
         self.datasetTab.webMapView.page.runJavaScript("setActiveLayers({0})".format(layers))
@@ -40,17 +40,8 @@ class datasetTab(object):
     def storeMapInformation(self):
         """
         """
-        
-        def storeMapLocation(loc):
-            loc = loc.split(":")[1]
-            self.userOptionsConfig['DATASETS TAB']['current_map_location'] = loc
-            print(loc)
-        def storeMapLayers(layers):
-            layers = layers.split(":")[1]
-            self.userOptionsConfig['DATASETS TAB']['current_map_layers'] = layers
-
-        self.datasetTab.webMapView.page.runJavaScript("getLocation()", storeMapLocation)
-        self.datasetTab.webMapView.page.runJavaScript("getActiveLayers()", storeMapLayers)
+        self.userOptionsConfig['DATASETS TAB']['current_map_location'] = self.datasetTab.webMapView.webClass.loc
+        self.userOptionsConfig['DATASETS TAB']['current_map_layers'] = self.datasetTab.webMapView.webClass.layers
 
         return
 

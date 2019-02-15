@@ -44,7 +44,6 @@ class menuBar(object):
         self.storeMapInformation()
         self.storeDataTabInformation()
 
-        print('PL',self.userOptionsConfig['DATASETS TAB']['current_map_location'])
         with open('resources/temp/user_set_options.txt', 'w') as configfile:
             self.userOptionsConfig.write(configfile)
         with open('resources/application_prefs.ini', 'w') as configfile:

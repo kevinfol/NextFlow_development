@@ -18,6 +18,7 @@ var initialLoad = false;
 var rect1 = null;
 var hucLayer = null;
 var hucList = null;
+var loaded = false;
 
 // Set up an initial map with a basic basemap
 var grayMap = L.tileLayer('http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
@@ -49,6 +50,18 @@ var layerControl = L.control.layers(baseMaps).addTo(map);
 // Create a layer Group
 var layerGrp = L.layerGroup();
 loadWatersheds();
+
+map.on('zoomend', function() {
+    updateApplication()});
+map.on('moveend', function() {
+    updateApplication()});
+map.on('baselayerchange', function() {
+    updateApplication()});
+map.on('overlayadd', function() {
+    updateApplication()});
+map.on('overlayremove', function() {
+    updateApplication()});
+
 function addPopups(layerG) {
     layerG.eachLayer(function (layer) {
         layer.on("click", function(e) {
@@ -324,6 +337,9 @@ function getBBCoords() {
 }
 
 function setActiveLayers(layers) {
+    
+    layers = layers.split(",");
+    console.log(layers);
     window.layerControl._layers.forEach(function (obj) {
         if (obj.overlay == true) {
             window.map.removeLayer(obj.layer);
@@ -345,13 +361,22 @@ function getActiveLayers() {
     var active = [];
     window.layerControl._layers.forEach(function (obj) {
         if (window.map.hasLayer(obj.layer)) {
-            
             active.push(obj.name);
-            
-            
         }
     })
     return `ACTIVELAYERS:${active}`;
+}
+
+function updateApplication() {
+    
+    if (window.loaded == true) {
+        var loc_ = getLocation();
+        var layers_ = getActiveLayers();
+        window.foo.getJavascriptVariable([loc_, layers_]);
+        return;
+    } else {
+        return;
+    }
 }
 
 function getLocation() {
@@ -363,7 +388,7 @@ function getLocation() {
 }
 
 function zoomToLoc(lat, long, zoomLevel) {
-    window.map.setView([lat, long], zoomLevel)
+    window.map.setView([lat, long], zoomLevel);
 }
 
 // Function to find center of polygon
@@ -391,3 +416,4 @@ function getCenter(feat, ev) {
     
     return coords;
 };
+
