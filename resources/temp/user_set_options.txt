@@ -1,9 +1,9 @@
+
 [DATASETS TAB]
-current_map_location = POSITION:45.26715476332794|-113.38439941406251|7
-current_map_layers = ACTIVELAYERS:Terrain,Watersheds,STREAMGAGE,SCAN,RESERVOIR
+current_map_location=
+current_map_layers=
 
 [DATA TAB]
-por_start = 
-current_plotted_columns = 
-current_plot_bounds = 0,1,0,1
-
+por_start=
+current_plotted_columns=
+current_plot_bounds=

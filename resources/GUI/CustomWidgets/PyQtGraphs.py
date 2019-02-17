@@ -163,8 +163,8 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
             dataItemsP2Names = [item.opts['name'] for item in dataItemsP2]
             p1Item = dataItemsP1[dataItemsP1Names.index(changed_col)]
             p2Item = dataItemsP2[dataItemsP2Names.index(changed_col)]
-            p1Item.setData(x_, y_)
-            p2Item.setData(x_, y_)
+            p1Item.setData(x_, y_, antialias=True)
+            p2Item.setData(x_, y_, antialias=True)
             self.p1.vb.setRange(xRange = current_bounds[0], yRange = current_bounds[1])
             return
 
@@ -198,19 +198,18 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
             y_ = y[~missing]
             if types[i] == 'bar':
                 x_ = np.append(x_, x_[-1])
-                self.p2.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col)
-                self.p1.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col)
+                self.p2.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col, antialias=True)
+                self.p1.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col, antialias=True)
             elif types[i] == 'line' and fill_below==True:
-                self.p2.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col)
-                self.p1.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col)
+                self.p2.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col, antialias=True)
+                self.p1.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col, antialias=True)
             elif types[i] == 'scatter':
-                self.p2.plot(x=x_, y=y_, pen='k', symbol='o', name=col)
-                self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=col)
+                self.p2.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
+                self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
             
         self.region.setRegion([x_[0], x_[-1]])
         self.region.setBounds([x_[0], x_[-1]])
         self.region.setZValue(10)
-        #self.p2.axes['left']['item'].setTicks([(mx, str(mx))])
         self.crossHairText = pg.TextItem(anchor=(0,1), color = (45,45,45))
         self.p1.addItem(self.crossHairText)
 
