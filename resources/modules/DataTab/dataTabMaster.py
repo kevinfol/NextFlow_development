@@ -93,9 +93,10 @@ class dataTab(object):
     def postProcessNewData(self, newDataTable, option):
         """
         """
+
         # First create a merged dataTable
         merged = pd.merge(left=self.dataTable, right=newDataTable, on=['Datetime','DatasetInternalID'], suffixes=('_old','_new'), indicator=True, how='outer')
-
+        
         # Filter to only get the changed data
         merged = merged[merged.Value_old != merged.Value_new]
 

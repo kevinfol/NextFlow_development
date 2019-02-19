@@ -27,10 +27,11 @@ def dataframeToGeoJSON(dataframe):
     extraParms = dataframe[dataframe.duplicated('CheckColumn')]
     extraParmsList = list(extraParms['CheckColumn'])
     sites = dataframe[~dataframe.duplicated('CheckColumn')]
+    sites['Name'] = [str(i) for i in sites.index]
     def preprocessSites(X):
         if X['CheckColumn'] in extraParmsList:
             matches = extraParms[extraParms['CheckColumn'] == X['CheckColumn']]
-            X.name = str(X.name) + '|{0}'.format('|'.join(list(matches.index.astype(str))))
+            X['Name'] = str(X['Name']) + '|{0}'.format('|'.join(list(matches.index.astype(str))))
             X['DatasetParameter'] = str(X['DatasetParameter']) + '|{0}'.format('|'.join(list(matches['DatasetParameter'])))
             X['DatasetUnits'] = str(X['DatasetUnits']) + '|{0}'.format('|'.join(list(matches['DatasetUnits'])))
             X['DatasetPORStart'] = str(X['DatasetPORStart']) + '|{0}'.format('|'.join(list(matches['DatasetPORStart'])))
@@ -41,7 +42,7 @@ def dataframeToGeoJSON(dataframe):
         features.append(
             geojson.Feature(geometry=geojson.Point((X['DatasetLongitude'],
                                                     X['DatasetLatitude'])),
-                            properties=dict(DatasetInternalID = str(X.name),
+                            properties=dict(DatasetInternalID = str(X['Name']),
                                             DatasetType = X['DatasetType'],
                                             DatasetExternalID = X['DatasetExternalID'],
                                             DatasetName = X['DatasetName'],

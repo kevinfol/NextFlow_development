@@ -87,15 +87,10 @@ def dataLoader(dataset, startDate, endDate):
         del df['DateTime'] # Delete the redundant datetime column
         df = df[~df.index.duplicated(keep='first')] # Remove duplicates from the dataset
         df = df[~df.index.isnull()]
-        df.columns = ['USBR | ' + stationID + ' | Inflow | CFS']
-
-        # Send the data to the output dataframe
-        dfOut = pd.concat([df, dfOut], axis = 1)
-        dfOut = dfOut.round(3)
-        print(dfOut)
+        df.columns = [stationID]
 
         # Return the dataframe
-        return dfOut
+        return df.round(3)
 
     else:
         pass

@@ -71,12 +71,12 @@ class alternateThreadWorker(QtCore.QRunnable):
             proc.join()
         
         for returnValue in returned:
+            print(returnValue)
             if returnValue.empty:
                 continue
             self.df = pd.concat([self.df, returnValue])
             
-            
-        self.df = self.df.drop_duplicates()
+        self.df = self.df[~self.df.index.duplicated(keep='first')]
         self.signals.returnNewData.emit(self.df)
         self.signals.finished.emit(True)
 
@@ -114,6 +114,7 @@ def worker(queue, dataset, startDate, endDate):
         data.columns =['Value']
         data.set_index([data.index, pd.Index(len(data)*[dataset.name])], inplace=True)
         data.index.names = ['Datetime','DatasetInternalID']
+
     except:
         retval = pd.DataFrame()
         queue.put(retval)

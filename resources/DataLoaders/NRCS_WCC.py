@@ -20,18 +20,18 @@ def dataLoader(stationDict, startDate, endDate):
 
     # Get the station triplet
     triplet = NRCS.service.getStations(
-        stationIds = stationDict['ID'],
-        networkCds = ["SNTL","SNOW"],
+        stationIds = stationDict['DatasetExternalID'],
+        networkCds = ["SNTL","SNOW","SCAN"],
         logicalAnd = True
     )
     # Set the station parameters to download the data
-    if stationDict['Parameter'] == 'SWE' or stationDict['Parameter'] == 'SWE_SnowCourse':
+    if stationDict['DatasetParameter'] == 'Snow Water Equivalent':
         soilFlag = False
         param_db_name = 'WTEQ'
         param_unit = 'inches'
-        if stationDict['TYPE'] == 'SNOTEL':
+        if stationDict['DatasetType'] == 'SNOTEL':
             duration = 'DAILY'
-        elif stationDict['TYPE'] == 'SNOWCOURSE':
+        elif stationDict['DatasetType'] == 'SNOWCOURSE':
             duration = 'SEMIMONTHLY'
         else:
             pass
@@ -84,11 +84,11 @@ def dataLoader(stationDict, startDate, endDate):
         actualStartDate = data[0]['beginDate']
         actualEndDate = data[0]['endDate']
         df2 = pd.DataFrame(index = pd.date_range(actualStartDate,actualEndDate))
-        df2['SNOTEL | ' + stationDict['Name'] + ' | ' + stationDict['Parameter'] + ' | ' + str(depth) + ' in. | ' + param_unit] = [pd.to_numeric(value, errors='coerce') for value in data[0]['values']]
+        df2['SNOTEL | ' + stationDict['DatasetName'] + ' | ' + stationDict['DatasetParameter'] + ' | ' + str(depth) + ' in. | ' + param_unit] = [pd.to_numeric(value, errors='coerce') for value in data[0]['values']]
         df2 = df2[~df2.index.duplicated(keep='first')] # Remove duplicates from the dataset
         df2 = df2[~df2.index.isnull()]
         df = pd.concat([df, df2], axis = 1)
-        return df
+        return df.round(3)
 
     # Get all the data for SWE and PRECIP staitons and store in a dataframe
     else:
@@ -102,7 +102,7 @@ def dataLoader(stationDict, startDate, endDate):
             endDate = datetime.strftime(endDate, '%Y-%m-%d'),
             alwaysReturnDailyFeb29 = 'false')
         
-        if stationDict['TYPE'] == 'SNOWCOURSE':
+        if stationDict['DatasetType'] == 'SNOWCOURSE':
             df2 = pd.DataFrame(index=pd.to_datetime(data[0]['collectionDates']))
         else:
             actualStartDate = data[0]['beginDate']
@@ -114,8 +114,9 @@ def dataLoader(stationDict, startDate, endDate):
         values = [pd.to_numeric(value, errors='coerce') for value in data[0]['values']]
         print("Values: " + str(len(values)))
         print("Index: " + str(len(df2.index)))
-        df2['SNOTEL | ' + stationDict['Name'] + ' | ' + stationDict['Parameter'] + ' | ' + param_unit] = values
+        df2['SNOTEL | ' + stationDict['DatasetName'] + ' | ' + stationDict['DatasetParameter'] + ' | ' + param_unit] = values
         df2 = df2[~df2.index.duplicated(keep='last')] # Remove duplicates from the dataset
         df2 = df2[~df2.index.isnull()]
         df = pd.concat([df, df2], axis = 1)
-        return df
+
+        return df.round(3)

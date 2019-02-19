@@ -17,7 +17,7 @@ def dataLoader(stationDict, startDate, endDate):
     # Generate a URL
     url = ('https://waterservices.usgs.gov/nwis/dv/?format=json' +
             # Specify the sites to download
-            '&sites=' + stationDict['ID'] +
+            '&sites=' + stationDict['DatasetExternalID'] +
             # Specify the start date
             '&startDT=' + datetime.strftime( startDate, '%Y-%m-%d' ) +
             #Specify the end data
@@ -56,10 +56,8 @@ def dataLoader(stationDict, startDate, endDate):
     df = df[~df.index.isnull()]
 
     # Rename the columns
-    df.columns = ['USGS | ' + stationDict['ID'] + ' | Flag', 'USGS | ' + stationDict['ID'] + ' | Streamflow | CFS']
-    del df['USGS | ' + stationDict['ID'] + ' | Flag']
-
-    print(df)
+    df.columns = ['USGS | ' + stationDict['DatasetExternalID'] + ' | Flag', 'USGS | ' + stationDict['DatasetExternalID'] + ' | Streamflow | CFS']
+    del df['USGS | ' + stationDict['DatasetExternalID'] + ' | Flag']
 
     # Return the data frame
     return df

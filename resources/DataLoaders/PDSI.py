@@ -16,7 +16,7 @@ class MyHTMLParser(HTMLParser):
 def dataLoader(stationDict, startDate, endDate):
 
     # Get the info
-    stationID = stationDict['ID']
+    stationID = stationDict['DatasetExternalID']
 
     # Find the correct link
     url = 'https://www1.ncdc.noaa.gov/pub/data/cirs/climdiv'

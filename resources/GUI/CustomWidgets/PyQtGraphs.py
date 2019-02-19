@@ -112,19 +112,21 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
         self.p1.scene().sigMouseMoved.connect(self.mouseMoved)
 
     def mouseMoved(self, event):
-        pos = QtCore.QPoint(event.x(), event.y())
-        if self.p1.sceneBoundingRect().contains(pos):
-            mousePoint = self.p1.vb.mapSceneToView(pos)
-            x_ = mousePoint.x()
-            y_ = mousePoint.y()
-            idx = int(x_ - x_%86400)
-            ts = datetime.utcfromtimestamp(idx).strftime('%Y-%m-%d')
-            if hasattr(self, "crossHairText"):
-                self.crossHairText.setText(ts + '\n' + str(np.round(y_,2)))
-                self.crossHairText.setPos(x_, y_)
-            self.vline.setPos(mousePoint.x())
-            self.hline.setPos(mousePoint.y())
-        
+        try:
+            pos = QtCore.QPoint(event.x(), event.y())
+            if self.p1.sceneBoundingRect().contains(pos):
+                mousePoint = self.p1.vb.mapSceneToView(pos)
+                x_ = mousePoint.x()
+                y_ = mousePoint.y()
+                idx = int(x_ - x_%86400)
+                ts = datetime.utcfromtimestamp(idx).strftime('%Y-%m-%d')
+                if hasattr(self, "crossHairText"):
+                    self.crossHairText.setText(ts + '\n' + str(np.round(y_,2)))
+                    self.crossHairText.setPos(x_, y_)
+                self.vline.setPos(mousePoint.x())
+                self.hline.setPos(mousePoint.y())
+        except:
+            return
 
     def update(self):
         self.region.setZValue(10)
@@ -207,8 +209,8 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
                 self.p2.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
                 self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
             
-        self.region.setRegion([x_[0], x_[-1]])
-        self.region.setBounds([x_[0], x_[-1]])
+        self.region.setRegion([xmn, xmx])
+        self.region.setBounds([xmn, xmx])
         self.region.setZValue(10)
         self.crossHairText = pg.TextItem(anchor=(0,1), color = (45,45,45))
         self.p1.addItem(self.crossHairText)

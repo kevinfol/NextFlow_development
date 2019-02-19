@@ -169,7 +169,7 @@ class datasetTab(object):
 
         geojson_ = gisFunctions.dataframeToGeoJSON(self.searchableDatasetsTable)
         self.datasetTab.webMapView.page.loadFinished.connect(lambda x: self.datasetTab.webMapView.page.runJavaScript("loadJSONData({0})".format(geojson_)))
-        self.datasetTab.webMapView.page.java_msg_signal.connect(lambda x: self.addDatasetToSelectedDatasets(int(x.split(':')[1])) if "ID:" in x else None)
+        self.datasetTab.webMapView.page.java_msg_signal.connect(lambda x: self.addDatasetToSelectedDatasets(int(x.split(':')[1])) if "ID:" in x else self.addDatasetToSelectedDatasets(str(x.split(':')[1])))
 
     def datasetRemovedFromDatasetTable(self, datasetID):
         print(datasetID)
@@ -189,6 +189,27 @@ class datasetTab(object):
         input:  datasetID
                 - The ID (DatasetInternalID) of the dataset that is to be added to the selected datasets
         """
+        
+        if isinstance(datasetID, str):
+            print(datasetID)
+            """
+            This is a HUC addition, not a point addition
+            """
+            datasets = self.additionalDatasetsList[self.additionalDatasetsList['DatasetExternalID'] == datasetID]
+            if 'PRISM' in list(datasets['DatasetAgency']):
+                datasets = datasets[datasets['DatasetAgency'] == 'PRISM']
+            elif 'NRCC' in list(datasets['DatasetAgency']):
+                datasets = datasets[datasets['DatasetAgency'] == 'NRCC']
+            else:
+                print('no res')
+                return
+            print(datasets)
+            self.datasetTable = self.datasetTable.append(datasets, ignore_index=False)
+            self.datasetTable.drop_duplicates(keep='first', inplace=True)
+            self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+            numDatasets = len(self.datasetTable)
+            self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
+            return
 
         if datasetID in list(self.datasetTable.index):
             return

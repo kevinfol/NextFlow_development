@@ -206,6 +206,13 @@ function loadJSONData(datasetString) {
     addPopups(window.layerGrp);
 };
 
+function HUCPress() {
+    var id = document.getElementById('hucNum').innerHTML;
+   
+    console.log('HUC:'+id);
+   
+}
+
 function loadWatersheds() {
     window.hucLayer = L.esri.featureLayer({
         url: "https://geodata.epa.gov/arcgis/rest/services/r4/Watersheds/MapServer/2",
@@ -229,6 +236,7 @@ function loadWatersheds() {
         var name = e.layer.feature.properties.SUBBASIN;
         var num = e.layer.feature.properties.HUC_8;
         var popHTML = "<strong>HUC8: " + num + "</strong><p>Name: " + name + "</p>"
+        popHTML = popHTML + '<button type="button" onclick="HUCPress()">Add Temp/Precip</button>' + `<p hidden id="hucNum" style="margin:0">${num}</p>` ;
         var pop = L.popup().setLatLng(coordinates).setContent(popHTML).addTo(window.map);
     });
     window.hucLayer.on("mouseover", function(e){
