@@ -69,6 +69,7 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             'DatasetElevation', # e.g. 3133 (in ft)
             'DatasetPORStart', # e.g. 1/24/1993
             'DatasetPOREnd']) # e.g. 1/22/2019
+
         self.dataTable = pd.DataFrame(
             index = pd.MultiIndex(
                 levels=[[],[],[]],
@@ -77,6 +78,7 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             ),
             columns = ["Value"],
             dtype=float)
+
         self.resampledTable = pd.DataFrame(columns = [
             "DatasetInternalID",
             "ResampledDataID",
@@ -86,17 +88,20 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             "Year",
             "Value",
             "Units"])
+
         self.equationPoolsTable = pd.DataFrame(columns = [
             "EquationID", # e.g. "JAN01"
             "Key", # e.g. 'PREDICTOR', 'PREDICTAND'
             "Identifier", # e.g. 'ID', '2001'
             "Value",
             "Units"]) # if applicable 
+
         self.forecastEquationsTable = pd.DataFrame(columns = [
             "ForecastEquationID",
             "Key",
             "Identifier",
             "Value"]) 
+
         self.forecastsTable = pd.DataFrame(columns = [
             "ForecastEquationID",
             "Year",
@@ -123,85 +128,3 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         self.showMaximized()
 
         return
-
-
-    
-    # MENU BAR
-    # This section of code deals with user interaction with the menu bar options. This includes opening and saving files,
-    # editing options, exporting and importing data.
-    
-
-
-    
-    
-
-    
-    # DATA TAB
-    # This section of code deals with user interaction on the data tab. This includes downloading and updating 
-    # daily data for selected datasets, pre-processing data, editing avilable data.
-    
-    
-
-    
-    # PREDICTORS TAB
-    # This section of code deals with user interaction with the predictors tab. This includes viewing predictor data 
-    # downsampled from the daily data, viewing the predictand data downsampled from daily inflow data, and assigning
-    # predictors to specific equations.
-
-    def setupPredictorsTab(self):
-        """
-        Initialize the predictors Tab
-        """
-        
-
-        return
-    
-
-
-    
-    # REGRESSION TAB
-    # This section of code deals with user interaction with the regression tab. This includes generating regression 
-    # equations using CV and SFFS. 
-
-    def setupRegressionTab(self):
-        """
-        Initialize the regression Tab
-        """
-        
-
-        return
-    
-    # FORECASTS TAB
-    # 
-    # 
-    #...This tab will summarize all the selected forecasts, notify the user when 2 or more equations are too similar
-    #...and allow the user to generate forecasts for the coming water year. 
-
-    def setupForecastsTab(self):
-        """
-        Initialize the Forecasts Tab
-        """
-        
-
-        return
-    
-
-    # FORECAST ANALYSIS TAB
-    #
-    #
-    #...This tab will include kernel density estimation, NRCS/CORPS forecast loader tool, what-if scenarios, 
-
-    def setupForecastAnalysisTab(self):
-        """
-        Initialize the Forecast Analysis Tab
-        """
-        
-
-        return
-
-    # MISCELLANEOUS FUNCTIONS
-    #
-    #
-    #
-
-    
