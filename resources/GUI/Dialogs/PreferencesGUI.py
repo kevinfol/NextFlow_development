@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
 from datetime import datetime
-from resources.modules.Miscellaneous import ConfigurationParsing, loggingAndErrors
+from resources.modules.Miscellaneous import  loggingAndErrors
 
 class preferencesDialog(QtWidgets.QDialog):
     """

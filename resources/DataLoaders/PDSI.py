@@ -14,6 +14,13 @@ class MyHTMLParser(HTMLParser):
                 self.link_extension = attrs[0][1]
 
 def dataLoader(stationDict, startDate, endDate):
+    """
+    This dataloader loads Palmer Drought severity index data from NOAA's 
+    climate prediction center. The only parameter that must be specified
+    is the "DatasetExternalID". Valid parameter options are 3-digit or 4-digit 
+    climate division numbers. 
+    DEFAULT OPTIONS
+    """
 
     # Get the info
     stationID = stationDict['DatasetExternalID']

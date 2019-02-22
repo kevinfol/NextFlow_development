@@ -1,7 +1,15 @@
+"""
+Script Name:        DataTab.py
+
+Description:        'DataTab.py' is a PyQt5 GUI for the NextFlow application. 
+                    The GUI includes all the visual aspects of the Data Tab (menus,
+                    plots, tables, buttons, webmaps, etc.) as well as the functionality
+                    to add data to the plots, tables, and webmaps.
+"""
+
 from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
-from resources.GUI.CustomWidgets.MatplotlibPlots import TimeSeriesDataPlot, NavigationToolbar
 from resources.GUI.CustomWidgets.PyQtGraphs import TimeSeriesSliderPlot
 from resources.GUI.CustomWidgets.QtSpreadSheet.QtSpreadSheet import QSpreadSheetWidget
 import  sys
@@ -43,13 +51,6 @@ class DataTab(QtWidgets.QWidget):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
         self.dataPlot = TimeSeriesSliderPlot()
-        #dataNav = NavigationToolbar(self.dataPlot, self)
-        #dataNav.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
-        #widg = QtWidgets.QWidget()
-        #layout_ = QtWidgets.QVBoxLayout()
-        #layout_.addWidget(self.dataPlot)
-        #layout_.addWidget(dataNav)
-        #widg.setLayout(layout_)
         splitter.addWidget(self.dataPlot)
 
         self.table = QSpreadSheetWidget()

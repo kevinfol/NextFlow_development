@@ -14,6 +14,18 @@ from zeep import Client
 from decimal import Decimal
 
 def dataLoader(stationDict, startDate, endDate):
+    """
+    This dataloader loads data from the NRCS's AWDB database. This database contains 
+    snow, precipitation, and soil moisture data for SNOTEL, SNOWCOURSE, and SCAN stations 
+    maintained by the NRCS. The "DatasetType" option specifies which of these three networks
+    your station belongs to. The Dataset Parameter (e.g. Snow Water Equivalent) and Dataset ID
+    (e.g. 304) options must be specified. Valid options for Parameter are:
+    "Snow Water Equivalent", 
+    "Precipitation",
+    "Soil Moisture"
+    DEFAULT OPTIONS
+    DatasetType: SNOTEL
+    """
  
     # Set up the soap service
     NRCS = Client('http://www.wcc.nrcs.usda.gov/awdbWebService/services?WSDL')
@@ -36,14 +48,14 @@ def dataLoader(stationDict, startDate, endDate):
         else:
             pass
 
-    elif stationDict['Parameter'] == 'Precip':
+    elif stationDict['DatasetParameter'] == 'Precipitation':
         soilFlag = False
         param_db_name = 'PRCP'
         param_unit = 'inches'
         duration = 'DAILY'
 
     
-    elif stationDict['Parameter'] == 'SOIL':
+    elif stationDict['DatasetParameter'] == 'Soil Moisture':
         soilFlag = True
         param_db_name = 'SMS'
         param_unit = 'pct'

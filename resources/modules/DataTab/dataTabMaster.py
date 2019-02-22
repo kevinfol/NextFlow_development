@@ -10,6 +10,7 @@ class dataTab(object):
     """
     def setupDataTab(self):
         """
+        Initializes the data tab and connect the data tab events.
         """
         self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime']), '%Y'))
         self.dataTab.downloadButton.clicked.connect(self.downloadData)
@@ -18,27 +19,32 @@ class dataTab(object):
 
         return
 
+
     def resetDataTab(self):
         """
         """
         if self.dataTable.empty:
             return
         self.displayDataInTable()
+        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime']), '%Y'))
         self.currentlyPlottedColumns = self.userOptionsConfig['DATA TAB']['current_plotted_columns'].split(',')
         self.plotClickedColumns(self.currentlyPlottedColumns)
         current_bounds = self.userOptionsConfig['DATA TAB']['current_plot_bounds'].split(',')
         self.dataTab.dataPlot.p1.vb.setRange(xRange = [float(current_bounds[0]),float(current_bounds[1])], yRange = [float(current_bounds[2]),float(current_bounds[3])])
 
-
         return
     
+
     def storeDataTabInformation(self):
         """
+        Stores the current settings for the plot and datetimes that the user has set. 
         """
         self.userOptionsConfig['DATA TAB']['por_start'] = self.dataTab.porT1.text()
         self.userOptionsConfig['DATA TAB']['current_plotted_columns'] = ','.join(self.currentlyPlottedColumns)
         self.userOptionsConfig['DATA TAB']['current_plot_bounds'] = ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[0]) + ',' + ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[1])
+        
         return
+        
 
     def downloadData(self, option='FreshDownload'):
         """
@@ -60,12 +66,12 @@ class dataTab(object):
             porT1 = pd.to_datetime(porT1+'-10-01')
             porT2 = pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime'])
         except Exception as E:
-            loggingAndErrors.showErrorMessage('Could not parse POR input: {0}'.format(E))
+            loggingAndErrors.showErrorMessage(self, 'Could not parse POR input: {0}'.format(E))
             return
 
         # 2. Validate Dataset Table
         if self.datasetTable.empty:
-            loggingAndErrors.showErrorMessage('No datasets Selected')
+            loggingAndErrors.showErrorMessage(self, 'No datasets Selected')
             return
         
         # 3. Instantiate Progress Bar
@@ -79,16 +85,20 @@ class dataTab(object):
             downloadWorker.signals.finished.connect(self.downloadFinished)
             self.threadPool.start(downloadWorker)
         except Exception as E:
-            loggingAndErrors.showErrorMessage('Could not download data: {0}'.format(E))
+            loggingAndErrors.showErrorMessage(self, 'Could not download data: {0}'.format(E))
             self.dataTab.downloadProgressBar.hide()
 
         return
 
+
     def downloadFinished(self):
         """
+        Hide the progress bar after the data finishes downloading
         """
         self.dataTab.downloadProgressBar.hide()
+
         return
+
 
     def postProcessNewData(self, newDataTable, option):
         """
@@ -121,7 +131,9 @@ class dataTab(object):
         self.dataTable = self.dataTable.append(updatedValuesOld)
         self.dataTable = self.dataTable[~self.dataTable.index.duplicated(keep='last')]
         self.displayDataInTable()
+
         return
+
     
     def displayDataInTable(self):
         """
@@ -138,8 +150,16 @@ class dataTab(object):
         self.dataTab.table.horizontalHeader().sectionClicked.connect(lambda x: self.plotClickedColumns())
         self.plotClickedColumns([self.dataDisplayTable.columns[0]])
 
+        return
+
+
     def userChangedData(self, dataChanges):
         """
+        This function is triggered whenever a user changes the data in the table. 
+        It updates the global data table and triggers updates in the resmapled tables
+        as well as in any associated forecasts. 
+
+        dataChanges: list of changed data, i.e [date, columnName, oldValue, newValue]
         """
         old_value = self.dataDisplayTable.loc[dataChanges[0]][dataChanges[1]]
         if dataChanges[2] == old_value:
@@ -151,6 +171,9 @@ class dataTab(object):
             self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 1]] = old_value
             self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 0]] = value
         self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, keep_current_bounds=True, changed_col=dataChanges[1])
+
+        return
+
 
     def plotClickedColumns(self, displayColumns = None, keep_current_bounds = False, changed_col = None):
         """
@@ -165,4 +188,6 @@ class dataTab(object):
                 return
         dataset = currentDataset[self.currentlyPlottedColumns]
         self.dataTab.dataPlot.add_data_to_plots(dataset, keep_bounds = keep_current_bounds, changed_col = changed_col)
+
+        return
             

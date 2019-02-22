@@ -13,6 +13,14 @@ import requests
 from datetime import datetime
 
 def dataLoader(dataset, startDate, endDate):
+    """
+    This dataloader loads data from USBR Rest endpoints. The required parameters
+    are "Dataset ID" which specifies the hydromet ID and the "DatasetParameterCode" which
+    specifies the hydromet PCODE.  "Dataset Agency" specifies the office to retrieve 
+    data from. Available options for 'Dataset Agency' are 'USBR GP' and 'USBR PN'
+    DEFAULT OPTIONS
+    DatasetParameterCode: IN
+    """
 
     # Figure out which region the station belongs to:
     region = dataset['DatasetAgency'].split(' ')[1].strip(' ')

@@ -13,15 +13,23 @@ from datetime import datetime
 from PyQt5.QtWidgets import QMessageBox
 
 def dataLoader(stationDict, startDate, endDate):
+    """
+    This dataloader loads watershed averaged data for PRISM and NRCC temperature
+    and precipitation datasets. The required parameters are "Dataset ID",
+    "Dataset Parameter", and "Dataset Agency". The "Dataset ID" must be a 
+    valid 8-digit hydrologic unic code. "Dataset Parameter" must either be "Temperature"
+    or "Precipitation". "Dataset Agency" must be either "NRCC" or "PRISM".
+    DEFAULT OPTIONS
+    """
 
     # Get the stationID ( the HUC )
-    stationID = stationDict['ID']
+    stationID = stationDict['DatasetExternalID']
 
     # Get the parameter Code
-    pcode = stationDict['Parameter']
+    pcode = stationDict['DatasetParameter']
 
     # Get the grid type
-    grid = stationDict['TYPE']
+    grid = stationDict['DatasetAgency']
 
     # First, we need to get the Bounding Box associated with the HUC
 

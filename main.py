@@ -46,12 +46,10 @@ if __name__ == '__main__':
     # Parse arguemnts
     parser = argparse.ArgumentParser()
     parser.add_argument('--splash','-s',help='Open program with splash screen',type=str, default='True')
-    parser.add_argument('--customdate', '-c', help='Trick PyForecast into thinking the current date is the user-defined date.', type=str, default=datetime.strftime(datetime.now(), '%Y-%m-%d'))
     
     args = parser.parse_args()
 
     no_splash = args.splash
-    customdate = args.customdate
 
     # Start up a splash screen while the application loads. (If 'no-splash' isn't specified)
     if no_splash == "True":
@@ -65,7 +63,7 @@ if __name__ == '__main__':
         time.sleep(1)
 
     # Open the loaded application and close the splash screen
-    mw = application.mainWindow(customdate)
+    mw = application.mainWindow()
     if no_splash == 'True':
         splash.finish(mw)
     sys.exit(app.exec_())

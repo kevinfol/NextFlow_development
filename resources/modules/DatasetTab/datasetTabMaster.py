@@ -1,6 +1,8 @@
 import pandas as pd
+from PyQt5 import QtCore
 from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DatasetTab import gisFunctions
+from resources.GUI.Dialogs import UserDefinedDatasetDialog
 from fuzzywuzzy.fuzz import WRatio 
 import multiprocessing as mp
 import itertools
@@ -22,8 +24,8 @@ class datasetTab(object):
         self.connectEventsDatasetTab()
         self.loadGISDataToWebMap()
         
-
         return
+
     
     def resetDatasetTab(self):
         """
@@ -36,14 +38,19 @@ class datasetTab(object):
         self.datasetTab.webMapView.page.runJavaScript("zoomToLoc({0},{1},{2})".format(loc[0], loc[1], loc[2]))
         self.datasetTab.webMapView.page.runJavaScript("setActiveLayers({0})".format(layers))
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+
+        return
+
     
     def storeMapInformation(self):
         """
+        Stores the current extent and settings of the web map into the user options configuration file
         """
         self.userOptionsConfig['DATASETS TAB']['current_map_location'] = self.datasetTab.webMapView.webClass.loc
         self.userOptionsConfig['DATASETS TAB']['current_map_layers'] = self.datasetTab.webMapView.webClass.layers
 
         return
+
 
     def loadAdditionalDatasetLists(self):
         """
@@ -55,6 +62,7 @@ class datasetTab(object):
         self.datasetTab.pdsiInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'PDSI']['DatasetName']))
 
         return
+
 
     def validateHUCInput(self, hucNumber):
         """
@@ -87,8 +95,45 @@ class datasetTab(object):
         self.datasetTab.boundingBoxButton.clicked.connect(lambda x: self.beginAreaSearch("bounding"))
         self.datasetTab.hucSelectionButton.clicked.connect(lambda x: self.beginAreaSearch("watershed"))
         self.datasetTab.boxHucSearchButton.clicked.connect(self.areaSearchForDatasets)
+        self.datasetTab.addiButton.clicked.connect(lambda x: self.createUserDefinedDataset(None))
+
+        return
+
+    
+    def createUserDefinedDataset(self, options=None):
+        """
+        Opens the user defined datasets dialog and connects the output to a function to add to the selected datasets
+        """
+        self.userDefinedDialog = UserDefinedDatasetDialog.UserDefinedDatasetDialog(loadOptions = options, parent=self)
+        self.userDefinedDialog.returnDatasetSignal.connect(self.addUserDefinedDatasetToSelectedDatasets)
+
+        return
+
+    @QtCore.pyqtSlot(object)
+    def addUserDefinedDatasetToSelectedDatasets(self, dataset):
+        """
+        Parses the user defined dataset and adds to the datasets table.
+        """
+        if list(self.datasetTable.index) == []:
+            maxIndex = 0
+        else:
+            maxIndex = max(self.datasetTable.index)
+        if maxIndex < 500000:
+            maxIndex = 500000
+        else:
+            maxIndex = maxIndex + 1
+        dataset.index = [maxIndex]
+        self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
+        self.datasetTable.drop_duplicates(keep='first', inplace=True)
+        self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+
+        return
+
 
     def beginAreaSearch(self, type_):
+        """
+        Begin the area search procedure by enabling BB or HUC selection in the map
+        """
         self.datasetTab.boundingBoxButton.setEnabled(False)
         self.datasetTab.hucSelectionButton.setEnabled(False)
         self.datasetTab.boxHucSearchButton.setEnabled(True)
@@ -99,7 +144,13 @@ class datasetTab(object):
             self.areaSearchType = 'watershed'
             self.datasetTab.webMapView.page.runJavaScript("enableHUCSelect()")
 
+        return
+
+
     def areaSearchForDatasets(self):
+        """
+        diable the area selection functionality and pass the selected hucs to the relevant search function
+        """
         self.datasetTab.boundingBoxButton.setEnabled(True)
         self.datasetTab.hucSelectionButton.setEnabled(True)
         self.datasetTab.boxHucSearchButton.setEnabled(False)
@@ -108,17 +159,35 @@ class datasetTab(object):
         else:
             self.datasetTab.webMapView.page.runJavaScript("getSelectedHUCs()", self.searchUsingHUCS)
 
+        return
+
+
     def searchUsingCoords(self, coords):
+        """
+        searches the searchable datatsets table for stations located within the selected bounding box
+        """
         n, w, s, e = [float(i) for i in str(coords).split(':')[1].split('|')]
         results = self.searchableDatasetsTable[(self.searchableDatasetsTable['DatasetLongitude'] <= e) & (self.searchableDatasetsTable['DatasetLongitude'] >= w) & (self.searchableDatasetsTable['DatasetLatitude'] >= s) & (self.searchableDatasetsTable['DatasetLatitude'] <= n)] 
         self.loadSelectedDatasets(results, self.datasetTab.boxHucResultsBox)
 
+        return
+
+
     def searchUsingHUCS(self, hucs):
+        """
+        Searches the searchable datasets table for stations located within the passed HUCs
+        """
         hucs = ast.literal_eval(str(hucs))
         results = self.searchableDatasetsTable[(self.searchableDatasetsTable['DatasetHUC8'].isin(hucs))]
         self.loadSelectedDatasets(results, self.datasetTab.boxHucResultsBox)
 
+        return
+
+
     def addAdditionalDatasetToSelectedDatasets(self, type_):
+        """
+
+        """
         if type_ == 'PRISM':
             huc = self.datasetTab.prismInput.text()
             if self.validateHUCInput(huc):
@@ -159,9 +228,12 @@ class datasetTab(object):
         numDatasets = len(self.datasetTable)
         self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
 
+        return
+
+
     def loadGISDataToWebMap(self):
         """
-        This function is responsible for loading the GIS data located 
+        This function is responsible for loading the GIS data located in the resources.GIS folder
         """
         if not hasattr(self, "searchableDatasetsTable"):
             self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx", index_col=0)
@@ -171,7 +243,14 @@ class datasetTab(object):
         self.datasetTab.webMapView.page.loadFinished.connect(lambda x: self.datasetTab.webMapView.page.runJavaScript("loadJSONData({0})".format(geojson_)))
         self.datasetTab.webMapView.page.java_msg_signal.connect(lambda x: self.addDatasetToSelectedDatasets(int(x.split(':')[1])) if "ID:" in x else self.addDatasetToSelectedDatasets(str(x.split(':')[1])))
 
+        return
+
+
     def datasetRemovedFromDatasetTable(self, datasetID):
+        """
+        Removes the dataset from the datasetsTable. Also triggers the removal of the any data
+        or forecasts associated with this dataset. 
+        """
         print(datasetID)
         datasetToRemove = self.datasetTable.loc[datasetID]
         self.datasetTable.drop(datasetToRemove.name, inplace=True)
@@ -182,6 +261,8 @@ class datasetTab(object):
         # ###########################################
         # NEED TO REMOVE ANY DATA ASSOCIATED WITH THIS STATION, ALSO ANY PREDICTORS OR FORECASTS THAT RELY ON THIS STATION
         # ########################################################################
+
+        return
         
 
     def addDatasetToSelectedDatasets(self, datasetID):
@@ -191,11 +272,11 @@ class datasetTab(object):
         """
         
         if isinstance(datasetID, str):
-            print(datasetID)
             """
             This is a HUC addition, not a point addition
             """
             datasets = self.additionalDatasetsList[self.additionalDatasetsList['DatasetExternalID'] == datasetID]
+
             if 'PRISM' in list(datasets['DatasetAgency']):
                 datasets = datasets[datasets['DatasetAgency'] == 'PRISM']
             elif 'NRCC' in list(datasets['DatasetAgency']):
@@ -226,6 +307,7 @@ class datasetTab(object):
 
         return
 
+
     def navigateMapToSelectedItem(self, item):
         """
         This function moves the map to the selected dataset (if it can be displayed on the map) that corresponds to the double-clicked item
@@ -235,6 +317,7 @@ class datasetTab(object):
         self.datasetTab.webMapView.page.runJavaScript("moveToMarker({0},{1})".format(lat, lng))
 
         return
+
 
     def searchAndReturnSearchResults(self, searchTerm):
         """
@@ -277,7 +360,9 @@ class datasetTab(object):
             if result[0] in list(self.datasetTable.index):
                 self.datasetTab.searchResultsBox.updateAddedStatus(result[0], 'added')
         self.datasetTab.keywordSearchButton.setEnabled(True)
+
         return 
+
 
     def loadSelectedDatasets(self, datasetsToLoad, widgetToLoadTo):
         """

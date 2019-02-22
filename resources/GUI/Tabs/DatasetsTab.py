@@ -150,6 +150,13 @@ class DatasetTab(QtWidgets.QWidget):
         self.climInput = QtWidgets.QComboBox()
         self.climButton = QtWidgets.QPushButton("Add")
         self.climButton.setFixedWidth(100)
+
+        addiLabel = QtWidgets.QLabel("User Defined Dataset")
+        addiInfo = QtWidgets.QLabel()
+        addiInfo.setPixmap(self.infoIcon)
+        addiInfo.setToolTip("")
+        self.addiButton = QtWidgets.QPushButton("Add Dataset")
+        self.addiButton.setFixedWidth(100)
         
         blank = QtWidgets.QLabel()
         blank.setMinimumHeight(10000)
@@ -194,8 +201,16 @@ class DatasetTab(QtWidgets.QWidget):
         layout2.addWidget(self.climButton)
         layout_.addLayout(layout2)
 
+        layout_.addSpacerItem(QtWidgets.QSpacerItem(40, 1000, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding))
 
-        layout_.addWidget(blank)
+        layout2 = QtWidgets.QHBoxLayout()
+        layout2.addWidget(addiInfo)
+        layout2.addWidget(addiLabel)
+        layout2.addSpacerItem(QtWidgets.QSpacerItem(40, 10, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding))
+        layout2.addWidget(self.addiButton)
+        layout_.addLayout(layout2)
+
+        #layout_.addWidget(blank)
         AdditionalDatasetTab.setLayout(layout_)
         icon = QtGui.QPixmap(os.path.abspath("resources/graphicalResources/icons/additionalTab.png"))
         matrix_ = QtGui.QTransform()

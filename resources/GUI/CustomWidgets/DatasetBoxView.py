@@ -20,7 +20,7 @@ class DatasetBoxView(QtWidgets.QListWidget):
     addSignal = QtCore.pyqtSignal(int)
 
     
-    def __init__(self, parent=None, searchBoxView = False):
+    def __init__(self, parent=None, searchBoxView = False, editContextMenuItem = False, ForecastItem = False):
         """
         Initialize a listwidget 
         """

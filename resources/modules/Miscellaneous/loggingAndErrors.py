@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
-def showErrorMessage(msg):
+def showErrorMessage(parent, msg):
         """
         """
         print(msg)
-        #errorMsg = QtWidgets.QMessageBox.warning(self, "Error", msg)
+        errorMsg = QtWidgets.QMessageBox.warning(parent, "Error", msg)

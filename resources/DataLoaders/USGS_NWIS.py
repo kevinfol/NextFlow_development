@@ -13,6 +13,11 @@ import requests
 from datetime import datetime
 
 def dataLoader(stationDict, startDate, endDate):
+    """
+    This dataloader loads streamflow data from the USGS's NWIS database.The only necessary
+    parameter is the USGS streamgage number that should be entered into the "Dataset ID" field.
+    DEFAULT OPTIONS
+    """
 
     # Generate a URL
     url = ('https://waterservices.usgs.gov/nwis/dv/?format=json' +

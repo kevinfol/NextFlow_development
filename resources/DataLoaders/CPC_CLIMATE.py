@@ -10,13 +10,26 @@ import pandas as pd
 from io import StringIO
 import numpy as np
 
+
 def dataLoader(stationDict, startDate, endDate):
+    """
+    This dataloader loads data from NOAA's Climate Prediction Center (CPC). The datasets
+    are climate indices that are useful for long-range precipitation forecasting. 
+    The "DatasetExternalID" option specifies which dataset should be downloaded. Valid 
+    paramters are: 
+    'nino3.4' - Nino 3.4 Sea Surface Temperature Anomaly (aka ENSO)
+    'pna' - Pacific North American Index
+    'amo' - Atlantic Multidecadal Oscillation
+    'pdo' - Pacific Decadal Oscillation
+    DEFAULT OPTIONS
+    DatasetExternalID: nino3.4
+    """
 
     # Figure out which indice we are downloading
-    stationNum = int(stationDict['ID'])
+    stationNum = stationDict['DatasetExternalID']
 
     # Grab the ENSO Nino3.4 data (SST and Anom)
-    if stationNum == 1 or stationNum == 2:
+    if stationNum == 'nino3.4':
 
         # We'll get as much weekly data as we can, then backfill with monthly data
         # Here are the relevant URLs
@@ -31,31 +44,27 @@ def dataLoader(stationDict, startDate, endDate):
         dataMonth = StringIO(dataMonth.content.decode('utf-8'))
         dataMonth = dataMonth.readlines()
         timestamps = []
-        ssts = []
         anoms = []
         for line in dataMonth[1:]:
             values = line.split()
             year = str(values[0])
             month = '0'+str(values[1])
             timestamps.append(pd.to_datetime(year + month[-2:] + '15', format='%Y%m%d'))
-            ssts.append(float(values[8]))
             anoms.append(float(values[9]))
 
-        dfMonth = pd.DataFrame(np.array([ssts, anoms]).T, index = timestamps, columns = ['Nino3.4 SST | Indice | degC','Nino3.4 ANOM | Indice | degC'])
+        dfMonth = pd.DataFrame(np.array(anoms).T, index = timestamps, columns = ['Nino3.4 ANOM | Indice | degC'])
 
         # Process the weekly data
         dataWeek = StringIO(dataWeek.content.decode('utf-8'))
         dataWeek = dataWeek.readlines()
         timestamps = []
-        ssts = []
         anoms = []
         for line in dataWeek[4:]:
             values = line.split('     ')
             timestamps.append(pd.to_datetime(values[0]))
-            ssts.append(float(values[3][:4]))
             anoms.append(float(values[3][4:]))
 
-        dfWeek = pd.DataFrame(np.array([ssts, anoms]).T, index = timestamps, columns = ['Nino3.4 SST | Indice | degC','Nino3.4 ANOM | Indice | degC'])
+        dfWeek = pd.DataFrame(np.array(anoms).T, index = timestamps, columns = ['Nino3.4 ANOM | Indice | degC'])
         print(dfWeek)
 
         # Merge the 2 datasets, keeping all the weekly data and cutting some monthly
@@ -71,17 +80,10 @@ def dataLoader(stationDict, startDate, endDate):
         df = df[df.index <= endDate]
         
         # Return the correct dataset
-        print(stationNum)
-        print(df)
-        if str(stationNum) == '1':
-            del df['Nino3.4 ANOM | Indice | degC']
-            return df
-        else:
-            del df['Nino3.4 SST | Indice | degC']
-            return df
+        return df
 
     # Otherwise, we'll grab the PNA dataset
-    elif stationNum == 3:
+    elif stationNum == 'pna':
         url = "http://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.pna.monthly.b5001.current.ascii"
         dataMonth = pd.read_csv(url, names = ['year','month','PNA | Indice'], sep='\s+')
         dataMonth['day'] = len(dataMonth.index)*[1]
@@ -95,7 +97,7 @@ def dataLoader(stationDict, startDate, endDate):
         df = pd.concat([df, dataMonth], axis = 1)
         return df
 
-    elif stationNum == 4:
+    elif stationNum == 'amo':
         """
         AMO Index"""
         url = 'https://www.esrl.noaa.gov/psd/data/correlation/amon.us.long.data'
@@ -132,7 +134,7 @@ def dataLoader(stationDict, startDate, endDate):
     #     df = df[df.index<=endDate]
     #     return df
 
-    elif stationNum == 5:
+    elif stationNum == 'pdo':
         """
         Pacific Multidecadal Oscillation (PDO)
         """

@@ -219,6 +219,9 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
 
 
 class colorCycler():
+    """
+    Simple color cycler for the plots
+    """
     def __init__(self):
         self.colors = [
             (228,26,28,150),
