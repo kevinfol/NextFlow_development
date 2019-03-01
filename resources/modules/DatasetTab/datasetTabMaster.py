@@ -1,3 +1,13 @@
+"""
+Script Name:    datasetTabMaster.py
+
+Description:    This script contains all the functionality associated with the 
+                Datasets Tab. Operations such as finding and defining datasets
+                as well as editing and deleting datasets are defined in this 
+                script. The GUI behind the datasets tab is defined in the 
+                resources.GUI.Tabs.DatasetsTab script.
+"""
+
 import pandas as pd
 from PyQt5 import QtCore
 from resources.modules.Miscellaneous import loggingAndErrors
@@ -8,7 +18,6 @@ import multiprocessing as mp
 import itertools
 from time import sleep
 import ast
-
 
 class datasetTab(object):
     # DATASETS TAB
@@ -26,13 +35,36 @@ class datasetTab(object):
         
         return
 
+
+    def connectEventsDatasetTab(self):
+        """
+        Connect Events within the datasets tab.
+        """
+        self.datasetTab.keywordSearchButton.clicked.connect(lambda x: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
+        self.datasetTab.keywordSearchBox.returnPressed.connect(lambda: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
+        self.datasetTab.searchResultsBox.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
+        self.datasetTab.selectedDatasetsWidget.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
+        self.datasetTab.boxHucResultsBox.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
+        self.datasetTab.searchResultsBox.addSignal.connect(self.addDatasetToSelectedDatasets)
+        self.datasetTab.boxHucResultsBox.addSignal.connect(self.addDatasetToSelectedDatasets)
+        self.datasetTab.selectedDatasetsWidget.removeSignal.connect(self.datasetRemovedFromDatasetTable)
+        self.datasetTab.prismButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('PRISM'))
+        self.datasetTab.nrccButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('NRCC'))
+        self.datasetTab.pdsiButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('PDSI'))
+        self.datasetTab.climButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('CLIM'))
+        self.datasetTab.boundingBoxButton.clicked.connect(lambda x: self.beginAreaSearch("bounding"))
+        self.datasetTab.hucSelectionButton.clicked.connect(lambda x: self.beginAreaSearch("watershed"))
+        self.datasetTab.boxHucSearchButton.clicked.connect(self.areaSearchForDatasets)
+        self.datasetTab.addiButton.clicked.connect(lambda x: self.createUserDefinedDataset(None))
+
+        return
+
     
     def resetDatasetTab(self):
         """
         Resets the tab to reflect any backend changes to the datasettables, views, etc.
         """
         loc = self.userOptionsConfig['DATASETS TAB']['current_map_location'].split(":")[1].split("|")
-        print(loc)
         layers = self.userOptionsConfig['DATASETS TAB']['current_map_layers'].split(":")[1]
 
         self.datasetTab.webMapView.page.runJavaScript("zoomToLoc({0},{1},{2})".format(loc[0], loc[1], loc[2]))
@@ -68,37 +100,12 @@ class datasetTab(object):
         """
         This function ensures that the user has entered a valid 8-digit watershed ID (HUC) into a HUC input field. 
         """
-        print(hucNumber)
         validHUCs = list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'WATERSHED']['DatasetExternalID'])
         
         if hucNumber in validHUCs:
             return True
         return False
-        
-
-    def connectEventsDatasetTab(self):
-        """
-        Connect Events within the datasets tab.
-        """
-        self.datasetTab.keywordSearchButton.clicked.connect(lambda x: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
-        self.datasetTab.keywordSearchBox.returnPressed.connect(lambda: self.searchAndReturnSearchResults(self.datasetTab.keywordSearchBox.text()))
-        self.datasetTab.searchResultsBox.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
-        self.datasetTab.selectedDatasetsWidget.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
-        self.datasetTab.boxHucResultsBox.itemDoubleClicked.connect(self.navigateMapToSelectedItem)
-        self.datasetTab.searchResultsBox.addSignal.connect(self.addDatasetToSelectedDatasets)
-        self.datasetTab.boxHucResultsBox.addSignal.connect(self.addDatasetToSelectedDatasets)
-        self.datasetTab.selectedDatasetsWidget.removeSignal.connect(self.datasetRemovedFromDatasetTable)
-        self.datasetTab.prismButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('PRISM'))
-        self.datasetTab.nrccButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('NRCC'))
-        self.datasetTab.pdsiButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('PDSI'))
-        self.datasetTab.climButton.clicked.connect(lambda x:self.addAdditionalDatasetToSelectedDatasets('CLIM'))
-        self.datasetTab.boundingBoxButton.clicked.connect(lambda x: self.beginAreaSearch("bounding"))
-        self.datasetTab.hucSelectionButton.clicked.connect(lambda x: self.beginAreaSearch("watershed"))
-        self.datasetTab.boxHucSearchButton.clicked.connect(self.areaSearchForDatasets)
-        self.datasetTab.addiButton.clicked.connect(lambda x: self.createUserDefinedDataset(None))
-
-        return
-
+    
     
     def createUserDefinedDataset(self, options=None):
         """
@@ -108,6 +115,7 @@ class datasetTab(object):
         self.userDefinedDialog.returnDatasetSignal.connect(self.addUserDefinedDatasetToSelectedDatasets)
 
         return
+
 
     @QtCore.pyqtSlot(object)
     def addUserDefinedDatasetToSelectedDatasets(self, dataset):
@@ -215,10 +223,7 @@ class datasetTab(object):
             index_ = self.datasetTab.climInput.currentText()
             dataset = self.additionalDatasetsList[(self.additionalDatasetsList['DatasetName'] == index_) & (self.additionalDatasetsList['DatasetType'] == 'CLIMATE INDICE')]
             self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
-
-        elif type_ == 'USERDEFINE':
-            pass
-
+            
         else:
             return
 
@@ -251,16 +256,25 @@ class datasetTab(object):
         Removes the dataset from the datasetsTable. Also triggers the removal of the any data
         or forecasts associated with this dataset. 
         """
-        print(datasetID)
+
+        ##NOTE, NEED TO PROVIDE A WARNING THAT THIS ACTION WILL REMOVE ALL DATA ASSOCIATED WITH THIS DATASET
+
         datasetToRemove = self.datasetTable.loc[datasetID]
         self.datasetTable.drop(datasetToRemove.name, inplace=True)
         numDatasets = len(self.datasetTable)
         self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
         self.datasetTab.searchResultsBox.updateAddedStatus(datasetID)
         self.datasetTab.boxHucResultsBox.updateAddedStatus(datasetID)
-        # ###########################################
-        # NEED TO REMOVE ANY DATA ASSOCIATED WITH THIS STATION, ALSO ANY PREDICTORS OR FORECASTS THAT RELY ON THIS STATION
-        # ########################################################################
+        
+        # Remove any data associated with this dataset from the dataTable, the modelRunTable, and remove any associated forecasts
+        self.dataTable.drop(datasetID, level='DatasetInternalID', inplace=True)
+        for row in self.modelRunsTable.iterrows():
+            if datasetID in row[1]['PredictorPool']:
+                self.modelRunsTable.drop(row[0], inplace=True)    
+        for row in self.forecastEquationsTable.iterrows()
+            if datasetID in row[1]['EquationPredictors']:
+                self.forecastsTable.drop(row[1]['ForecastEquationID'], level='ForecastEquationID', inplace=True)
+                self.forecastEquationsTable.drop(row[0], inplace=True)
 
         return
         
@@ -282,9 +296,7 @@ class datasetTab(object):
             elif 'NRCC' in list(datasets['DatasetAgency']):
                 datasets = datasets[datasets['DatasetAgency'] == 'NRCC']
             else:
-                print('no res')
                 return
-            print(datasets)
             self.datasetTable = self.datasetTable.append(datasets, ignore_index=False)
             self.datasetTable.drop_duplicates(keep='first', inplace=True)
             self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
@@ -347,7 +359,6 @@ class datasetTab(object):
         
         pool = mp.Pool(mp.cpu_count() - 1)
         searchTable['Score'] = list(pool.starmap(WRatio, zip(searchTable['searchRow'], itertools.repeat(searchTerm, len(searchTable['searchRow'])))))
-        print(searchTable['Score'])
         pool.close()
         pool.join()
         

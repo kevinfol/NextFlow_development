@@ -13,3 +13,17 @@ from    PyQt5   import  QtWidgets, \
 import  sys
 import  os
 
+class NewForecastTab(QtWidgets.QWidget):
+    """
+
+    """
+    def __init__(self, parent=None):
+        QtWidgets.QWidget.__init__(self)
+        layout = QtWidgets.QVBoxLayout()
+
+        leftPane = QtWidgets.QWidget()
+        midPane = QtWidgets.QWidget()
+        rightPane = QtWidgets.QWidget()
+        
+
+

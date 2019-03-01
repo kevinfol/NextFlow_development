@@ -72,42 +72,72 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
             'DatasetAdditionalOptions']) 
 
         # The data table stores all of the raw data associated with the selected datasets.
-        # Edited data is versioned as -1 and unedited data is versioned as 0
+        # Edited data is versioned as 1 and unedited data is versioned as 0
         self.dataTable = pd.DataFrame(
             index = pd.MultiIndex(
                 levels=[[],[],[]],
                 codes = [[],[],[]],
-                names = ['Datetime','DatasetInternalID','Version']
+                names = ['Datetime','DatasetInternalID','EditFlag']
             ),
             columns = ["Value"],
             dtype=float)
+        
+        # This table will keep track of all the model runs initial conditions
+        self.modelRunsTable = pd.DataFrame(
+            index = pd.Index([], dtype=int, name='ModelRunID'),
+            columns = [
+                "Predictand",
+                "PredictandPeriod",
+                "PredictandMethod",
+                "PredictorPool",
+                "PredictorForceFlag",
+                "PredictorPeriods",
+                "PredictorMethods",
+                "RegressionType",
+                "CrossValidationType",
+                "FeatureSelectionType",
+                "PerformanceMetric"
+            ]
+        )
 
+        # The forecastEquationsTable stores all of the forecast equations saved or imported by the user.
         self.forecastEquationsTable = pd.DataFrame(
             index = pd.Index([], dtype=int, name='ForecastEquationID'),
             columns = [
-                "EquationSource", # E.g. NextFlow, NRCS, COE, etc
-                "EquationComment", # E.g. Calib. per. 1981-2015, excluding 2011.  JR2=.143, R2=.220.  D. Garen 25 Feb 2016
-                "EquationCoefficients", # E.g. [2.8, 1.2, 44.3, ...]
-                "EquationPredictors", # E.g. [100234, 101423, 102334, ...] List of DatasetInternalIDs
-
-            ]
-        )
+                "EquationSource", # e.g. 'NextFlow','NRCS', 'CustomImport'
+                "EquationComment",
+                "EquationPredictand",
+                "PredictandPeriod", 
+                "PredictandMethod"
+                "EquationCreatedOn",
+                "EquationIssueDate",
+                "EquationCoefficients", 
+                "EquationIntercept",
+                "EquationPredictors", 
+                "PredictorPeriods",
+                "PredictorMethods"
+            ])
 
         self.forecastsTable = pd.DataFrame(
+            index = pd.MultiIndex(
+                levels=[[],[],[]],
+                codes= [[],[],[]],
+                names=['ForecastEquationID', 'Year', 'ForecastIssuedOn']
+            ),
             columns = [
-                "ForecastEquationID",
+                "ForecastExceedanceKey", # e.g. [0.01, 0.02, ..., 0.98, 0.99]
                 "ForecastValues", # in order of 0-100% exceedance
-                "Year", # e.g. 2019
-                "ForecastIssuedOn" # e.g. 2019-03-04
-            ]
+                ],
         )
         
+        # Initialize the software with default values for the user configuration and any stored values for the application preferences
         initUserOptions.initOptions()
         self.userOptionsConfig = configparser.ConfigParser()
         self.userOptionsConfig.read('resources/temp/user_set_options.txt')
         self.applicationPrefsConfig = configparser.ConfigParser()
         self.applicationPrefsConfig.read('resources/application_prefs.ini')
 
+        # Set-up all the tabs and menu bars
         self.setupDatasetTab()
         self.setupDataTab()
         self.setupMenuBar()

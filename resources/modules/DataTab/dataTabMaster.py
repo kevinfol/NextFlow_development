@@ -172,6 +172,8 @@ class dataTab(object):
             self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 0]] = value
         self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, keep_current_bounds=True, changed_col=dataChanges[1])
 
+        # NOTE, NEED TO UPDATE ANY FORECASTS BASED ON THIS DATA
+
         return
 
 
