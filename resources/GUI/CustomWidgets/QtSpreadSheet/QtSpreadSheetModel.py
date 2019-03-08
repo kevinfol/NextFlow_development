@@ -145,7 +145,7 @@ class QSpreadSheetModel(QAbstractItemModel):
                 if index.column() == 0:
                     return self.datasetIndexArray[index.row()-1]
                 return self.dataArray[index.row()][index.column()-1]
-        
+
         elif role == Qt.DisplayRole:
 
             # 4 possible cases:

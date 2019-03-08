@@ -75,12 +75,13 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         # Edited data is versioned as 1 and unedited data is versioned as 0
         self.dataTable = pd.DataFrame(
             index = pd.MultiIndex(
-                levels=[[],[],[]],
-                codes = [[],[],[]],
-                names = ['Datetime','DatasetInternalID','EditFlag']
+                levels=[[],[],],
+                codes = [[],[],],
+                names = ['Datetime','DatasetInternalID']
             ),
-            columns = ["Value"],
+            columns = ["Value","EditFlag"],
             dtype=float)
+        self.dataTable['EditFlag'] = self.dataTable['EditFlag'].astype(bool)
         
         # This table will keep track of all the model runs initial conditions
         self.modelRunsTable = pd.DataFrame(

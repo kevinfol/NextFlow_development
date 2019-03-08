@@ -1,0 +1,4 @@
+One option that the user should be allowed to adjust is the transformation of the response variable between log-linear and linear-linear.
+For reservoirs, the response (inflow) is realistically always going to be positive, so we should really try and fit log(y) instead of y to 
+get rid of all negative values. 
+

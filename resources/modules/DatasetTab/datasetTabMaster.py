@@ -28,6 +28,7 @@ class datasetTab(object):
         """
         Initialize the datasets Tab
         """
+        self.datasetTypesList = []
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
         self.loadAdditionalDatasetLists()
         self.connectEventsDatasetTab()
@@ -56,6 +57,7 @@ class datasetTab(object):
         self.datasetTab.hucSelectionButton.clicked.connect(lambda x: self.beginAreaSearch("watershed"))
         self.datasetTab.boxHucSearchButton.clicked.connect(self.areaSearchForDatasets)
         self.datasetTab.addiButton.clicked.connect(lambda x: self.createUserDefinedDataset(None))
+        self.datasetTab.selectedDatasetsWidget.editAction.triggered.connect(self.beginDatasetEdit)
 
         return
 
@@ -83,6 +85,16 @@ class datasetTab(object):
 
         return
 
+    def beginDatasetEdit(self):
+        """
+        Opens the dataset editor dialog to allow a user to edit the parameters of a dataset
+        """
+        idx = self.datasetTab.selectedDatasetsWidget.currentRow()
+        datasetID = self.datasetTab.selectedDatasetsWidget.item(idx).dataset.name
+        dataset = self.datasetTable.loc[datasetID]
+        self.createUserDefinedDataset(options=dataset)
+
+        return
 
     def loadAdditionalDatasetLists(self):
         """
@@ -92,6 +104,9 @@ class datasetTab(object):
         self.additionalDatasetsList = pd.read_excel("resources/GIS/AdditionalDatasets.xlsx", dtype={'DatasetExternalID':str}, index_col=0)
         self.datasetTab.climInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'CLIMATE INDICE']['DatasetName']))
         self.datasetTab.pdsiInput.addItems(list(self.additionalDatasetsList[self.additionalDatasetsList['DatasetType'] == 'PDSI']['DatasetName']))
+        self.datasetTypesList.append(list(set(list(self.additionalDatasetsList['DatasetType']))))
+        
+        
 
         return
 
@@ -111,11 +126,23 @@ class datasetTab(object):
         """
         Opens the user defined datasets dialog and connects the output to a function to add to the selected datasets
         """
-        self.userDefinedDialog = UserDefinedDatasetDialog.UserDefinedDatasetDialog(loadOptions = options, parent=self)
+        self.datasetTypesList = [subitem for item in self.datasetTypesList for subitem in (item if isinstance(item, list) else [item])]
+        self.userDefinedDialog = UserDefinedDatasetDialog.UserDefinedDatasetDialog(loadOptions = options, parent=self, datasetTypes=self.datasetTypesList)
         self.userDefinedDialog.returnDatasetSignal.connect(self.addUserDefinedDatasetToSelectedDatasets)
+        self.userDefinedDialog.updatedDatasetSignal.connect(self.updateDatasetInSelectedDatasets)
 
         return
 
+    @QtCore.pyqtSlot(object)
+    def updateDatasetInSelectedDatasets(self, dataset):
+        """
+        Updates the datasettable with any changes made by the user in the edit dialog. The data is re-load
+        """
+        self.datasetTable.update(dataset)
+        self.datasetTable.drop_duplicates(keep='first', inplace=True)
+        self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+
+        return
 
     @QtCore.pyqtSlot(object)
     def addUserDefinedDatasetToSelectedDatasets(self, dataset):
@@ -243,6 +270,8 @@ class datasetTab(object):
         if not hasattr(self, "searchableDatasetsTable"):
             self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx", index_col=0)
             self.searchableDatasetsTable.index.name = 'DatasetInternalID'
+            self.datasetTypesList.append(list(set(list(self.searchableDatasetsTable['DatasetType']))))
+            
 
         geojson_ = gisFunctions.dataframeToGeoJSON(self.searchableDatasetsTable)
         self.datasetTab.webMapView.page.loadFinished.connect(lambda x: self.datasetTab.webMapView.page.runJavaScript("loadJSONData({0})".format(geojson_)))
@@ -271,7 +300,7 @@ class datasetTab(object):
         for row in self.modelRunsTable.iterrows():
             if datasetID in row[1]['PredictorPool']:
                 self.modelRunsTable.drop(row[0], inplace=True)    
-        for row in self.forecastEquationsTable.iterrows()
+        for row in self.forecastEquationsTable.iterrows():
             if datasetID in row[1]['EquationPredictors']:
                 self.forecastsTable.drop(row[1]['ForecastEquationID'], level='ForecastEquationID', inplace=True)
                 self.forecastEquationsTable.drop(row[0], inplace=True)
@@ -349,9 +378,6 @@ class datasetTab(object):
             """
             self.datasetTab.keywordSearchButton.setEnabled(True)
             return
-
-        if not hasattr(self, "searchableDatasetsTable"):
-            self.searchableDatasetsTable = pd.read_excel("resources/GIS/PointDatasets.xlsx", index_col=0)
 
         searchTable = self.searchableDatasetsTable.copy()
         searchTable['DatasetExternalID'] = searchTable['DatasetExternalID'].astype(str)

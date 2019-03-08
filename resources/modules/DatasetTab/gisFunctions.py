@@ -8,7 +8,7 @@ import geojson
 import pandas as pd
 from datetime import datetime, date
 
-def dataframeToGeoJSON(dataframe):
+def dataframeToGeoJSON(df):
     """
     This function reads a formatted dataframe (formatted by NextFlow application) and 
     returns a geojson featureCollection of point features. 
@@ -19,7 +19,7 @@ def dataframeToGeoJSON(dataframe):
     Output: geojson string of features.
     """
     features = []
-
+    dataframe = df.copy()
     # Find all sites with multiple parameters
     dataframe['CheckColumn'] = dataframe['DatasetAgency'] + ' ' + dataframe['DatasetExternalID'].astype(str)
     dataframe['DatasetPORStart'] = [dataframe['DatasetPORStart'][i].isoformat() for i in dataframe.index]

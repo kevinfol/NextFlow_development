@@ -55,6 +55,11 @@ class DatasetBoxView(QtWidgets.QListWidget):
             self.addAction(self.removeAction)
             self.removeAction.triggered.connect(self.removeCurrentDataset)
         
+        if 'edit' in options:
+            self.editAction = QtWidgets.QAction("Edit Dataset")
+            self.addAction(self.editAction)
+            
+        
         return
 
     

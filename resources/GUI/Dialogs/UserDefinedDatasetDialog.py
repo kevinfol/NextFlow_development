@@ -11,12 +11,15 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
     """
 
     returnDatasetSignal = QtCore.pyqtSignal(object)
+    updatedDatasetSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, loadOptions=None, parent=None):
+    def __init__(self, loadOptions=None, parent=None, datasetTypes=None):
         super(UserDefinedDatasetDialog, self).__init__()
+        if 'USER DEFINED' not in datasetTypes:
+            datasetTypes.append('USER DEFINED')
         mainLayout = QtWidgets.QVBoxLayout()
         self.parent = parent
-        self.setWindowTitle("Add User Defined Dataset")
+        self.setWindowTitle("Add or Edit Dataset")
 
         nameEditTitle = QtWidgets.QLabel("Dataset Name *")
         self.nameEdit = QtWidgets.QLineEdit()
@@ -37,6 +40,15 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addWidget(agencyEditTitle)
         hlayout.addWidget(self.agencyEdit)
+        mainLayout.addLayout(hlayout)
+
+        typeTitle =  QtWidgets.QLabel("Dataset Type")
+        self.typeDropDown = QtWidgets.QComboBox()
+        self.typeDropDown.addItems(datasetTypes)
+        self.typeDropDown.setCurrentText("USER DEFINED")
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.addWidget(typeTitle)
+        hlayout.addWidget(self.typeDropDown)
         mainLayout.addLayout(hlayout)
 
         paramEditTitle = QtWidgets.QLabel("Dataset Parameter *")
@@ -99,7 +111,7 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         self.optionsTable = OptionsTable()
         mainLayout.addWidget(self.optionsTable)
 
-        addButton = QtWidgets.QPushButton("Add")
+        addButton = QtWidgets.QPushButton("Confirm")
         addButton.clicked.connect(self.packageAndReturn)
         cancelButton = QtWidgets.QPushButton("Cancel")
         cancelButton.clicked.connect(self.close)
@@ -110,9 +122,10 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
 
         self.setLayout(mainLayout)
         self.populateOptions()
+        self.editFlag = False
 
-        if loadOptions != None:
-            print('loadOptions: ', loadOptions)
+        if isinstance(loadOptions, pd.Series):
+            self.editFlag = True
             self.loadOptions(loadOptions)
 
         self.show()
@@ -132,6 +145,7 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         additionalOptionsDict = OrderedDict()
         df['DatasetExternalID'] = self.idEdit.text()
         df['DatasetName'] = self.nameEdit.text()
+        df['DatasetType'] = self.typeDropDown.currentText()
         df['DatasetParameter'] = self.paramEdit.text()
         df['DatasetUnits'] = self.unitsEdit.text()
         df['DatasetAgency'] = self.agencyEdit.text()
@@ -139,7 +153,6 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         df['DatasetLatitude'] = self.latEdit.text()
         df['DatasetLongitude'] = self.longEdit.text()
         df['DatasetDefaultResampling'] = self.resampleChooser.currentText()
-        df['DatasetType'] = 'USER DEFINED'
 
         for row in range(self.optionsTable.rowCount()):
             key = self.optionsTable.item(row, 0).text()
@@ -156,9 +169,16 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         if not self.testLoader(df):
             return
 
+        if self.editFlag:
+            df.set_index(pd.Index([self.storedIDX]), inplace=True)
+            self.updatedDatasetSignal.emit(df)
+            self.close()
+            return
+
         # Emit the dataset information
         self.returnDatasetSignal.emit(df)
         self.close()
+        return
 
     def populateOptions(self):
         """
@@ -203,16 +223,19 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
 
     def loadOptions(self, dataset):
         """
+        Loads data from an existing dataset into the dialog for editing. 
         """
+        self.storedIDX = dataset.name
         self.nameEdit.setText(str(dataset['DatasetName']))
         self.idEdit.setText(str(dataset['DatasetExternalID']))
         self.agencyEdit.setText(str(dataset['DatasetAgency']))
         self.paramEdit.setText(str(dataset['DatasetParameter']))
         self.unitsEdit.setText(str(dataset['DatasetUnits']))
+        self.typeDropDown.setCurrentText(str(dataset['DatasetType']))
         self.loaderDropDown.setCurrentText(dataset['DatasetDataloader'])
         self.resampleChooser.setCurrentText(dataset['DatasetDefaultResampling'])
-        self.latEdit.setText(dataset['DatasetLatitude'])
-        self.longEdit.setText(dataset['DatasetLongitude'])
+        self.latEdit.setText(str(dataset['DatasetLatitude']))
+        self.longEdit.setText(str(dataset['DatasetLongitude']))
         
         loader = self.loaderDropDown.currentText()
         if loader+'.py' in self.defaultLoaders:
@@ -226,6 +249,8 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         options = docstring.split("DEFAULT OPTIONS")[1]
 
         self.description.setPlainText(description)
+
+        self.optionsTable.setRowCount(0)
 
         for option in options.splitlines():
             if option.strip() == '':
@@ -250,13 +275,13 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
 
     def testLoader(self, dataset):
         """
+        Reads the dataset and tests the parameters with the specified dataloader to ensure that 
+        the dataset can be properly downloaded. This function is not run if the dataset is an 'import' dataset. 
         """
 
         # Attempt to import the loader
         try:
             loaderName = list(dataset['DatasetDataloader'])[0]
-            print(dataset)
-            print(loaderName)
             if loaderName + '.py' in  self.defaultLoaders:
                 loader = importlib.import_module('resources.DataLoaders.'+ loaderName)
             else:
