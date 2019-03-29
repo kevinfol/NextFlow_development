@@ -46,8 +46,7 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
 
         # Initialize the class as a QMainWindow and setup its User Interface
         super(self.__class__, self).__init__()
-        self.setUI()
-        pd.set_option('display.max_rows', 25)
+        
         
 
         # Create the data structures.
@@ -134,9 +133,10 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         # Initialize the software with default values for the user configuration and any stored values for the application preferences
         initUserOptions.initOptions()
         self.userOptionsConfig = configparser.ConfigParser()
-        self.userOptionsConfig.read('resources/temp/user_set_options.txt')
-        self.applicationPrefsConfig = configparser.ConfigParser()
-        self.applicationPrefsConfig.read('resources/application_prefs.ini')
+        self.userOptionsConfig.read('resources/temp/user_options.txt')
+
+        self.setUI()
+        pd.set_option('display.max_rows', 25)
 
         # Set-up all the tabs and menu bars
         self.setupDatasetTab()

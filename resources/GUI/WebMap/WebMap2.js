@@ -42,6 +42,7 @@ var baseMaps = {'Grayscale': grayMap,
 
 // Create map panes
 map.createPane("HUCPane")
+map.createPane('ClimPane')
 map.createPane("PointsPane")
 
 // Add controls
@@ -50,6 +51,7 @@ var layerControl = L.control.layers(baseMaps).addTo(map);
 // Create a layer Group
 var layerGrp = L.layerGroup();
 loadWatersheds();
+//loadClimateDivisions();
 
 map.on('zoomend', function() {
     updateApplication()});
@@ -213,6 +215,11 @@ function HUCPress() {
    
 }
 
+function PDSIPress() {
+    var id = document.getElementById('pdsiNum').innerHTML;
+    console.log('PDSI:'+id);
+}
+
 function loadWatersheds() {
     window.hucLayer = L.esri.featureLayer({
         url: "https://geodata.epa.gov/arcgis/rest/services/r4/Watersheds/MapServer/2",
@@ -247,6 +254,45 @@ function loadWatersheds() {
         })
     });
     window.layerControl.addOverlay(window.hucLayer, 'Watersheds')
+}
+
+function loadClimateDivisions() {
+    window.climLayer = L.esri.featureLayer({
+        url: "https://services1.arcgis.com/hLJbHVT9ZrDIzK0I/arcgis/rest/services/ClimateDivisionsOnly/FeatureServer/0",
+        simplifyFactor: 1.2,
+        precision: 3,
+        pane: "ClimPane",
+        fields: ['OBJECTID','STATE', 'CLIMDIV', 'NAME'],
+        renderer: L.canvas(),
+        style: {
+            color: '#ce7a2b',
+            fillOpacity: 0,
+            weight: 1,
+            opacity: 0.8,
+        }
+    }).addTo(window.map);
+
+    window.climLayer.on('mouseout', function(e){
+        window.climLayer.resetFeatureStyle(e.layer.feature.id)
+    });
+
+    window.climLayer.on("mouseover", function(e){
+        window.climLayer.setFeatureStyle(e.layer.feature.id, {
+            color: "#ff7b00",
+            weight: 3,
+            fillOpacity: 0
+        })
+    });
+
+    window.climLayer.on('click', function(e){
+        var coordinates = getCenter(e.layer.feature, e);
+        var name = e.layer.feature.properties.NAME;
+        var num = e.layer.feature.properties.CLIMDIV;
+        var popHTML = "<strong>NAME: " + name + "</strong><p>Number: " + num + "</p>"
+        popHTML = popHTML + '<button type="button" onclick="PDSIPress()">Add PDSI</button>' + `<p hidden id="pdsiNum" style="margin:0">${num}</p>` ;
+        var pop = L.popup().setLatLng(coordinates).setContent(popHTML).addTo(window.map);
+    });
+    window.layerControl.addOverlay(window.climLayer, 'Climate Divisions')
 }
 
 function moveToMarker(lat, lng) {

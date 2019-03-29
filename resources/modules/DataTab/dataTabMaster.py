@@ -4,7 +4,9 @@ Description:    This script contains all the functionality behind the User inter
 """
 from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DataTab import downloadData
-from resources.GUI.Dialogs.conflictReviewDialog import conflictReviewDialog
+from resources.GUI.Dialogs.ConflictReviewDialog import conflictReviewDialog
+from resources.GUI.Dialogs import UserDefinedDatasetDialog
+from PyQt5 import QtCore
 import time
 import pandas as pd
 import numpy as np
@@ -16,8 +18,9 @@ class dataTab(object):
         """
         Initializes the data tab and connect the data tab events.
         """
-        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime']), '%Y'))
+        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.userOptionsConfig['GENERAL']['application_datetime']), '%Y'))
         self.dataTab.downloadButton.clicked.connect(self.downloadData)
+        self.dataTab.importButton.clicked.connect(lambda x: self.createUserDefinedDataset(importDatasetFlag=True))
         self.currentlyPlottedColumns = []
 
         return
@@ -29,7 +32,7 @@ class dataTab(object):
         if self.dataTable.empty:
             return
         self.displayDataInTable()
-        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime']), '%Y'))
+        self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.userOptionsConfig['GENERAL']['application_datetime']), '%Y'))
         self.currentlyPlottedColumns = self.userOptionsConfig['DATA TAB']['current_plotted_columns'].split(',')
         self.plotClickedColumns(self.currentlyPlottedColumns)
         current_bounds = self.userOptionsConfig['DATA TAB']['current_plot_bounds'].split(',')
@@ -43,7 +46,7 @@ class dataTab(object):
         Stores the current settings for the plot and datetimes that the user has set. 
         """
         self.userOptionsConfig['DATA TAB']['por_start'] = self.dataTab.porT1.text()
-        self.userOptionsConfig['DATA TAB']['current_plotted_columns'] = ','.join(self.currentlyPlottedColumns)
+        self.userOptionsConfig['DATA TAB']['current_plotted_columns'] = ','.join([str(i) for i in self.currentlyPlottedColumns])
         self.userOptionsConfig['DATA TAB']['current_plot_bounds'] = ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[0]) + ',' + ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[1])
         
         return
@@ -62,7 +65,7 @@ class dataTab(object):
         porT2 = self.dataTab.porT2.text()
         try:
             porT1 = pd.to_datetime(porT1+'-10-01')
-            porT2 = pd.to_datetime(self.applicationPrefsConfig['GENERAL']['application_datetime'])
+            porT2 = pd.to_datetime(self.userOptionsConfig['GENERAL']['application_datetime'])
         except Exception as E:
             loggingAndErrors.showErrorMessage(self, 'Could not parse POR input: {0}'.format(E))
             return
@@ -74,6 +77,7 @@ class dataTab(object):
         
         # 3. Instantiate Progress Bar
         self.dataTab.downloadProgressBar.show()
+        self.dataTab.downloadButton.setEnabled(False)
 
         # 4. Download Data For each dataset and append to dataTable
         try:
@@ -84,6 +88,7 @@ class dataTab(object):
             self.threadPool.start(downloadWorker)
         except Exception as E:
             loggingAndErrors.showErrorMessage(self, 'Could not download data: {0}'.format(E))
+            self.dataTab.downloadButton.setEnabled(True)
             self.dataTab.downloadProgressBar.hide()
 
         return
@@ -94,17 +99,33 @@ class dataTab(object):
         Hide the progress bar after the data finishes downloading
         """
         self.dataTab.downloadProgressBar.hide()
+        self.dataTab.downloadButton.setEnabled(True)
 
         return
 
     def importDataset(self):
         """
+        This function opens up the Import dialog to let the user import a custom dataset
         """
+        
+        return
 
+    @QtCore.pyqtSlot(object)
+    def setDataForImportedDataset(self, data):
+        """
+        Stores the data from the imported dataset into the dataTable.
+        """
+        id_ = self.datasetTable.index[-1]
+        data.columns =['Value']
+        data.set_index([data.index, pd.Index(len(data)*[id_])], inplace=True)
+        data.index.names = ['Datetime','DatasetInternalID']
+        self.postProcessNewData(data)
         return
 
     def postProcessNewData(self, newDataTable):
         """
+        This function gets the raw downloaded data from the downloadData function and merges it with the existing dataset, updating any outdated 
+        values, and detecting any merge conflicts.
         """
 
         # First create a merged dataTable
@@ -129,7 +150,7 @@ class dataTab(object):
         # find the updated values that are replacing unedited original data
         #updatedValuesNew_need_validation = pd.DataFrame(merged[(merged['_merge'] == 'both') & (merged['Value_new'] != merged['Value_old']) & (merged['EditFlag'] == True)][['Value_old', 'Value_new', 'EditFlag']])
         #if loggingAndErrors.displayDialog("We've downloaded data that conflicts with your edited data. Would you like to review the conflicts? If not, we'll overwrite your edits with the new data."):
-            #self.conflictReviewDialog = conflictReviewDialog(df=updatedValuesNew_need_validation, datasets = self.datasetTable)
+            # self.conflictReviewDialog = conflictReviewDialog(df=updatedValuesNew_need_validation, datasets = self.datasetTable)
             # This part still needs work. Theres a lot of moving parts with checkboxes/etc. 
 
         #TEMPORARY
@@ -149,16 +170,13 @@ class dataTab(object):
         """
         if self.dataTable.empty:
             return
-        self.dataDisplayTable = pd.DataFrame(self.dataTable['Value']) 
-        self.dataDisplayTable = self.dataDisplayTable.unstack(level=1)['Value'] # Pivot table to columned-datasets / datetime index
-        self.dataDisplayTable.columns = [self.datasetTable.loc[i]['DatasetName'] for i in list(self.dataDisplayTable.columns)]
-        self.dataTab.table.model().load_new_dataset(self.dataDisplayTable, suppress_column_names=False, display_index_col=True, index_col_name='Datetime')
-        self.dataTab.table.model().changedDataSignal.connect(self.userChangedData)
+        self.dataTab.table.model().initialize_model_with_dataset(self.dataTable, self.datasetTable)
         self.dataTab.table.horizontalHeader().sectionClicked.connect(lambda x: self.plotClickedColumns())
-        self.plotClickedColumns([self.dataDisplayTable.columns[0]])
+        self.dataTab.table.model().changedDataSignal.connect(self.userChangedData)
+        self.plotClickedColumns([self.datasetTable.index[0]])
 
         return
-
+ 
 
     def userChangedData(self, dataChanges):
         """
@@ -167,35 +185,27 @@ class dataTab(object):
 
         dataChanges: list of changed data, i.e [date, columnName, oldValue, newValue]
         """
-        old_value = self.dataDisplayTable.loc[dataChanges[0]][dataChanges[1]]
-        if dataChanges[2] == old_value:
-            self.dataDisplayTable.loc[dataChanges[0]][dataChanges[1]] = dataChanges[3]
-            try:
-                value = float(dataChanges[3])
-            except:
-                value = np.nan
-            self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 1]] = old_value
-            self.dataTable.loc[pd.IndexSlice[dataChanges[0], dataChanges[1], 0]] = value
-        self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, keep_current_bounds=True, changed_col=dataChanges[1])
+        if dataChanges[2] == dataChanges[3]:
+            return
+        self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, changed_col=dataChanges[1])
 
         # NOTE, NEED TO UPDATE ANY FORECASTS BASED ON THIS DATA
 
         return
 
 
-    def plotClickedColumns(self, displayColumns = None, keep_current_bounds = False, changed_col = None):
+    def plotClickedColumns(self, displayColumns = None, changed_col = None):
         """
         This function plots the columns that the user selects
         """
-        currentDataset = self.dataTab.table.getCurrentDataFrame()
         if displayColumns != None:
             self.currentlyPlottedColumns = displayColumns
         else:
             self.currentlyPlottedColumns = self.dataTab.table.getSelectedColumns()
             if self.currentlyPlottedColumns == [] or self.currentlyPlottedColumns == None:
                 return
-        dataset = currentDataset[self.currentlyPlottedColumns]
-        self.dataTab.dataPlot.add_data_to_plots(dataset, keep_bounds = keep_current_bounds, changed_col = changed_col)
+        data = self.dataTable.loc[(slice(None), self.currentlyPlottedColumns), 'Value']
+        self.dataTab.dataPlot.add_data_to_plots(data, changed_col = changed_col, datasets=self.datasetTable)
 
         return
             

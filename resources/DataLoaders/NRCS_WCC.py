@@ -124,8 +124,6 @@ def dataLoader(stationDict, startDate, endDate):
             else:
                 df2 = pd.DataFrame()
         values = [pd.to_numeric(value, errors='coerce') for value in data[0]['values']]
-        print("Values: " + str(len(values)))
-        print("Index: " + str(len(df2.index)))
         df2['SNOTEL | ' + stationDict['DatasetName'] + ' | ' + stationDict['DatasetParameter'] + ' | ' + param_unit] = values
         df2 = df2[~df2.index.duplicated(keep='last')] # Remove duplicates from the dataset
         df2 = df2[~df2.index.isnull()]

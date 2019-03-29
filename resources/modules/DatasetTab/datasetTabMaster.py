@@ -92,6 +92,10 @@ class datasetTab(object):
         idx = self.datasetTab.selectedDatasetsWidget.currentRow()
         datasetID = self.datasetTab.selectedDatasetsWidget.item(idx).dataset.name
         dataset = self.datasetTable.loc[datasetID]
+        if isinstance(dataset['DatasetAdditionalOptions'], dict):
+            if 'Import Filename' in dataset['DatasetAdditionalOptions'].keys():
+                self.createUserDefinedDataset(options=dataset, importDatasetFlag=True)
+                return
         self.createUserDefinedDataset(options=dataset)
 
         return
@@ -122,14 +126,15 @@ class datasetTab(object):
         return False
     
     
-    def createUserDefinedDataset(self, options=None):
+    def createUserDefinedDataset(self, options=None, importDatasetFlag=False):
         """
         Opens the user defined datasets dialog and connects the output to a function to add to the selected datasets
         """
         self.datasetTypesList = [subitem for item in self.datasetTypesList for subitem in (item if isinstance(item, list) else [item])]
-        self.userDefinedDialog = UserDefinedDatasetDialog.UserDefinedDatasetDialog(loadOptions = options, parent=self, datasetTypes=self.datasetTypesList)
+        self.userDefinedDialog = UserDefinedDatasetDialog.UserDefinedDatasetDialog(loadOptions = options, importDatasetFlag =  importDatasetFlag, parent=self, datasetTypes=self.datasetTypesList)
         self.userDefinedDialog.returnDatasetSignal.connect(self.addUserDefinedDatasetToSelectedDatasets)
         self.userDefinedDialog.updatedDatasetSignal.connect(self.updateDatasetInSelectedDatasets)
+        self.userDefinedDialog.returnDataFromImportSignal.connect(self.setDataForImportedDataset) # on DataTabMaster.py
 
         return
 
@@ -139,7 +144,7 @@ class datasetTab(object):
         Updates the datasettable with any changes made by the user in the edit dialog. The data is re-load
         """
         self.datasetTable.update(dataset)
-        self.datasetTable.drop_duplicates(keep='first', inplace=True)
+        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 
         return
@@ -159,7 +164,7 @@ class datasetTab(object):
             maxIndex = maxIndex + 1
         dataset.index = [maxIndex]
         self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
-        self.datasetTable.drop_duplicates(keep='first', inplace=True)
+        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 
         return
@@ -254,7 +259,7 @@ class datasetTab(object):
         else:
             return
 
-        self.datasetTable.drop_duplicates(keep='first', inplace=True)
+        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 
         numDatasets = len(self.datasetTable)
@@ -297,6 +302,8 @@ class datasetTab(object):
         
         # Remove any data associated with this dataset from the dataTable, the modelRunTable, and remove any associated forecasts
         self.dataTable.drop(datasetID, level='DatasetInternalID', inplace=True)
+        self.dataTable.set_index(self.dataTable.index.remove_unused_levels(), inplace=True)
+        self.displayDataInTable()
         for row in self.modelRunsTable.iterrows():
             if datasetID in row[1]['PredictorPool']:
                 self.modelRunsTable.drop(row[0], inplace=True)    
@@ -327,7 +334,7 @@ class datasetTab(object):
             else:
                 return
             self.datasetTable = self.datasetTable.append(datasets, ignore_index=False)
-            self.datasetTable.drop_duplicates(keep='first', inplace=True)
+            self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
             self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
             numDatasets = len(self.datasetTable)
             self.datasetTab.selectedDatasetsLabel.setText("{0} datasets have been selected:".format(numDatasets))
@@ -337,6 +344,8 @@ class datasetTab(object):
             return
 
         dataset = self.searchableDatasetsTable.loc[datasetID]
+        if dataset['DatasetParameter'].upper() == 'PRECIPITATION':
+            dataset['DatasetAdditionalOptions'] = {'PlotType':'bar'}
         self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 

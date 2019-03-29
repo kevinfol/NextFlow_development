@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from datetime import datetime
 from resources.modules.Miscellaneous import  loggingAndErrors
+
 import pandas as pd
 import os
 from collections import OrderedDict
@@ -12,9 +13,11 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
 
     returnDatasetSignal = QtCore.pyqtSignal(object)
     updatedDatasetSignal = QtCore.pyqtSignal(object)
+    returnDataFromImportSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, loadOptions=None, parent=None, datasetTypes=None):
+    def __init__(self, loadOptions=None, parent=None, datasetTypes=None, importDatasetFlag=False):
         super(UserDefinedDatasetDialog, self).__init__()
+        self.importDatasetFlag = importDatasetFlag
         if 'USER DEFINED' not in datasetTypes:
             datasetTypes.append('USER DEFINED')
         mainLayout = QtWidgets.QVBoxLayout()
@@ -91,25 +94,40 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         self.loaderDropDown = QtWidgets.QComboBox()
         self.defaultLoaders = os.listdir("resources/DataLoaders/")
         self.customLoaders = os.listdir("resources/DataLoaders/CustomDataLoaders/")
-        for i, file in enumerate(self.defaultLoaders + self.customLoaders):
-            if file[-3:] == '.py':
-                self.loaderDropDown.addItem(file[:-3])
+        if not importDatasetFlag:
+            for i, file in enumerate(self.defaultLoaders + self.customLoaders):
+                if file[-3:] == '.py':
+                    self.loaderDropDown.addItem(file[:-3])
 
-        self.loaderDropDown.currentTextChanged.connect(self.populateOptions)
+            self.loaderDropDown.currentTextChanged.connect(self.populateOptions)
+        else:
+            self.loaderDropDown.addItem("IMPORT")
+            
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addWidget(loaderSelectTitle)
         hlayout.addWidget(self.loaderDropDown)
         mainLayout.addLayout(hlayout)
 
         decriptionTitle = QtWidgets.QLabel("Loader Description")
-        self.description = QtWidgets.QPlainTextEdit()
+        self.description = QtWidgets.QTextEdit()
         self.description.setMinimumHeight(70)
         self.description.setReadOnly(True)
+        self.description.setFontFamily('consolas')
         mainLayout.addWidget(decriptionTitle)
         mainLayout.addWidget(self.description)
 
-        self.optionsTable = OptionsTable()
-        mainLayout.addWidget(self.optionsTable)
+        if not importDatasetFlag:
+            self.optionsTable = OptionsTable()
+            mainLayout.addWidget(self.optionsTable)
+        else:
+            self.loadFileButton = QtWidgets.QPushButton("Choose File")
+            self.loadFileButton.clicked.connect(self.setFileName)
+            self.fileNameText = QtWidgets.QLabel("No file chosen...")
+            self.fileName = ""
+            hlayout = QtWidgets.QHBoxLayout()
+            hlayout.addWidget(self.loadFileButton)
+            hlayout.addWidget(self.fileNameText)
+            mainLayout.addLayout(hlayout)
 
         addButton = QtWidgets.QPushButton("Confirm")
         addButton.clicked.connect(self.packageAndReturn)
@@ -121,14 +139,40 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         mainLayout.addLayout(hlayout)
 
         self.setLayout(mainLayout)
-        self.populateOptions()
+        if not importDatasetFlag:
+            self.populateOptions()
+        else:
+            self.setImportLayout()
         self.editFlag = False
 
         if isinstance(loadOptions, pd.Series):
             self.editFlag = True
             self.loadOptions(loadOptions)
-
+        
         self.show()
+        return
+
+    def setImportLayout(self):
+        self.description.setPlainText("""
+Load data from a CSV or XLSX file. 
+Data should be formatted in two columns
+with headers similar to:
+
+Date        |   Data Value
+------------|--------------
+2018-10-01  |   2342.2
+2018-10-02  |   2345.3
+...         |   ....""")
+        return
+
+    def setFileName(self):
+        fname = QtWidgets.QFileDialog.getOpenFileName(self, 'Import File', 'C:\\', 'Flat Files (*.csv *.xlsx *.xls)')[0]
+        if fname != '':
+            self.fileName = fname
+            self.fileNameText.setText(fname)
+        else:
+            return
+
         return
 
     def packageAndReturn(self):
@@ -154,14 +198,19 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         df['DatasetLongitude'] = self.longEdit.text()
         df['DatasetDefaultResampling'] = self.resampleChooser.currentText()
 
-        for row in range(self.optionsTable.rowCount()):
-            key = self.optionsTable.item(row, 0).text()
-            value = self.optionsTable.item(row, 1).text()
-            if key in self.parent.datasetTable.columns:
-                df[key] = value
-            else:
-                additionalOptionsDict[key] = value
-        
+        if not self.importDatasetFlag:
+            for row in range(self.optionsTable.rowCount()):
+                key = self.optionsTable.item(row, 0).text()
+                value = self.optionsTable.item(row, 1).text()
+                if key in self.parent.datasetTable.columns:
+                    df[key] = value
+                else:
+                    additionalOptionsDict[key] = value
+        else:
+            if self.fileName == '':
+                return
+            additionalOptionsDict['Import Filename'] = self.fileName
+
         if additionalOptionsDict != {}:
             df['DatasetAdditionalOptions'] = [additionalOptionsDict]
 
@@ -177,6 +226,8 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
 
         # Emit the dataset information
         self.returnDatasetSignal.emit(df)
+        if self.importDatasetFlag:
+            self.returnDataFromImportSignal.emit(self.datasetToReturnEventually)
         self.close()
         return
 
@@ -237,6 +288,10 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
         self.latEdit.setText(str(dataset['DatasetLatitude']))
         self.longEdit.setText(str(dataset['DatasetLongitude']))
         
+        if self.importDatasetFlag:
+            self.fileNameText.setText(dataset['DatasetAdditionalOptions']['Import Filename'])
+            return
+
         loader = self.loaderDropDown.currentText()
         if loader+'.py' in self.defaultLoaders:
             dataloader = importlib.import_module('resources.DataLoaders.'+ loader)
@@ -276,8 +331,22 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
     def testLoader(self, dataset):
         """
         Reads the dataset and tests the parameters with the specified dataloader to ensure that 
-        the dataset can be properly downloaded. This function is not run if the dataset is an 'import' dataset. 
+        the dataset can be properly downloaded or imported. 
         """
+        if self.importDatasetFlag:
+            fileName = dataset['DatasetAdditionalOptions'].iloc[0]['Import Filename']
+            try:
+                if fileName[-4:] == '.csv':
+                    df = pd.read_csv(fileName, index_col=0, parse_dates=True)
+                elif '.xls' in fileName[-4:]:
+                    df = pd.read_excel(fileName, index_col=0, parse_dates=True)
+                else:
+                    return False
+                self.datasetToReturnEventually = df
+                return True
+            except:
+                return False
+
 
         # Attempt to import the loader
         try:

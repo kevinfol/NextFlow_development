@@ -11,7 +11,7 @@ from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
 from resources.GUI.CustomWidgets.PyQtGraphs import TimeSeriesSliderPlot
-from resources.GUI.CustomWidgets.QtSpreadSheet.QtSpreadSheet import QSpreadSheetWidget
+from resources.GUI.CustomWidgets.SpreadSheet import SpreadSheetView
 import  sys
 import  os
 
@@ -29,7 +29,7 @@ class DataTab(QtWidgets.QWidget):
         self.porT2.setDisabled(True)
         self.porT1.setFixedWidth(50)
         self.porT2.setFixedWidth(50)
-        self.downloadButton = QtWidgets.QPushButton("Download/Update")
+        self.downloadButton = QtWidgets.QPushButton("Download / Update")
         self.importButton = QtWidgets.QPushButton("Import")
         self.downloadProgressBar = QtWidgets.QProgressBar()
         self.downloadProgressBar.setRange(0, 100)
@@ -51,7 +51,7 @@ class DataTab(QtWidgets.QWidget):
         self.dataPlot = TimeSeriesSliderPlot()
         splitter.addWidget(self.dataPlot)
 
-        self.table = QSpreadSheetWidget()
+        self.table = SpreadSheetView()
         splitter.addWidget(self.table)
 
         layout.addWidget(splitter)

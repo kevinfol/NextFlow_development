@@ -65,7 +65,6 @@ def dataLoader(stationDict, startDate, endDate):
             anoms.append(float(values[3][4:]))
 
         dfWeek = pd.DataFrame(np.array(anoms).T, index = timestamps, columns = ['Nino3.4 ANOM | Indice | degC'])
-        print(dfWeek)
 
         # Merge the 2 datasets, keeping all the weekly data and cutting some monthly
         dfMonth = dfMonth[dfMonth.index < dfWeek.index[0]]

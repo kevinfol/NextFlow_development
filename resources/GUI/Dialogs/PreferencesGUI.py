@@ -90,6 +90,7 @@ class preferencesDialog(QtWidgets.QDialog):
         """
         self.plottingTab = QtWidgets.QWidget()
         layout = QtWidgets.QFormLayout()
+
         return
     
     def setupStatisticsTab(self):

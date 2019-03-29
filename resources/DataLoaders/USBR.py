@@ -80,7 +80,6 @@ def dataLoader(dataset, startDate, endDate):
         eday = datetime.strftime(endDate, '%d')
         url = "https://www.usbr.gov/pn-bin/daily.pl?station={0}&format=csv&year={1}&month={2}&day={3}&year={4}&month={5}&day={6}&pcode={7}"
         url = url.format(stationID, syear, smonth, sday, eyear, emonth, eday, pcode)
-        print(url)
 
         # Download the data and check for a valid response
         response = requests.get(url)

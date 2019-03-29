@@ -71,7 +71,6 @@ class alternateThreadWorker(QtCore.QRunnable):
             proc.join()
         
         for returnValue in returned:
-            print(returnValue)
             if returnValue.empty:
                 continue
             self.df = pd.concat([self.df, returnValue])
@@ -112,7 +111,7 @@ def worker(queue, dataset, startDate, endDate):
     try:
         data = dataGetFunction(dataset, startDate, endDate)
         data.columns =['Value']
-        data.set_index([data.index, pd.Index(len(data)*[dataset.name])], inplace=True)
+        data.set_index([data.index, pd.Index(len(data)*[int(dataset.name)])], inplace=True)
         data.index.names = ['Datetime','DatasetInternalID']
 
     except:

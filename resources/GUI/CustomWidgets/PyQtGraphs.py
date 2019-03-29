@@ -5,7 +5,8 @@ from PyQt5 import QtWidgets
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from pyqtgraph.graphicsItems.LegendItem import LegendItem, ItemSample
+from pyqtgraph.graphicsItems.LegendItem import LegendItem, ItemSample, PlotDataItem
+from bisect import bisect_left
 
 def updateSize_(self):
     if self.size is not None:
@@ -19,22 +20,113 @@ def updateSize_(self):
         width = max(width, sample.boundingRect().width()+label.width())
         #print(width, height)
     #print width, height
-    self.setGeometry(0, 0, width+25, height)
+    self.setGeometry(0, 0, width+60, height)
 
 def addItem_(self, item, name):
     label = pg.LabelItem(name, justify='left')
     if isinstance(item, ItemSample):
         sample = item
+        sample.setFixedWidth(20)
     else:
-        sample = ItemSample(item)        
+        sample = ItemSample(item)     
+        sample.setFixedWidth(20)   
     row = self.layout.rowCount()
     self.items.append((sample, label))
     self.layout.addItem(sample, row, 0)
     self.layout.addItem(label, row, 1)
     self.updateSize()
 
-pg.setConfigOption('background', 'w')
+def getData_(self):
+        if self.xData is None:
+            return (None, None)
+        
+        if self.xDisp is None:
+            x = self.xData
+            y = self.yData
+            
+            if self.opts['fftMode']:
+                x,y = self._fourierTransform(x, y)
+                # Ignore the first bin for fft data if we have a logx scale
+                if self.opts['logMode'][0]:
+                    x=x[1:]
+                    y=y[1:]                
+            if self.opts['logMode'][0]:
+                x = np.log10(x)
+            if self.opts['logMode'][1]:
+                y = np.log10(y)
+                    
+            ds = self.opts['downsample']
+            if not isinstance(ds, int):
+                ds = 1
+                
+            if self.opts['autoDownsample']:
+                # this option presumes that x-values have uniform spacing
+                range = self.viewRect()
+                if range is not None:
+                    dx = float(x[-1]-x[0]) / (len(x)-1)
+                    x0 = (range.left()-x[0]) / dx
+                    x1 = (range.right()-x[0]) / dx
+                    width = self.getViewBox().width()
+                    if width != 0.0:
+                        ds = int(max(1, int((x1-x0) / (width*self.opts['autoDownsampleFactor']))))
+                    ## downsampling is expensive; delay until after clipping.
+            
+            if self.opts['clipToView']:
+                view = self.getViewBox()
+                if view is None:# or not view.autoRangeEnabled()[0]:
+                    # this option presumes that x-values have uniform spacing
+                    range = self.viewRect()
+                    if range is not None and len(x) > 1:
+                        dx = float(x[-1]-x[0]) / (len(x)-1)
+                        # clip to visible region extended by downsampling value
+                        x0 = np.clip(int((range.left()-x[0])/dx)-1*ds , 0, len(x)-1)
+                        x1 = np.clip(int((range.right()-x[0])/dx)+2*ds , 0, len(x)-1)
+                        x = x[x0:x1]
+                        y = y[x0:x1]
+                    
+            if ds > 1:
+                if self.opts['downsampleMethod'] == 'subsample':
+                    x = x[::ds]
+                    y = y[::ds]
+                elif self.opts['downsampleMethod'] == 'mean':
+                    n = len(x) // ds
+                    x = x[:n*ds:ds]
+                    y = y[:n*ds].reshape(n,ds).mean(axis=1)
+                elif self.opts['downsampleMethod'] == 'peak':
+                    n = len(x) // ds
+                    x1 = np.empty((n,2))
+                    x1[:] = x[:n*ds:ds,np.newaxis]
+                    x = x1.reshape(n*2)
+                    y1 = np.empty((n,2))
+                    y2 = y[:n*ds].reshape((n, ds))
+                    y1[:,0] = y2.max(axis=1)
+                    y1[:,1] = y2.min(axis=1)
+                    y = y1.reshape(n*2)
+                
+            if self.opts["stepMode"]:
+
+                # and only if clip to view or auto-downsampling is enabled
+                if self.opts['clipToView'] or self.opts['autoDownsample']:
+
+                    # if there is data
+                    if x is not None:
+                        # if step mode is enabled and len(x) != len(y) + 1
+                        if len(x) == len(y):
+                            if len(x) > 2:
+                                x = np.append(x, (x[-1] - x[-2]) + x[-1])
+
+                    if (x is None and y is None) or (len(x) == 0 and len(y) == 0):
+                        if self.opts["stepMode"]:
+                            x = np.array([0,0])
+                            y = np.array([0])
+            self.xDisp = x
+            self.yDisp = y
+        return x,y 
+
+pg.setConfigOption('background', '#FFFFFF')
 pg.setConfigOption('foreground', 'k')
+
+PlotDataItem.getData = getData_
 
 LegendItem.addItem = addItem_
 LegendItem.updateSize = updateSize_
@@ -98,16 +190,23 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
         self.p2.addItem(self.region, ignoreBounds=True)
         self.p1.setMenuEnabled(False)
         self.p2.setMenuEnabled(False)
-        
-        #self.p1.setAutoVisible(y=True)
+
+        # Create the second axis for both plots
+        self.p3 = pg.ViewBox()
+        self.p1.showAxis('right')
+        self.p1.scene().addItem(self.p3)
+        self.p1.getAxis('right').linkToView(self.p3)
+        self.p3.setXLink(self.p1)
+
+        self.p4 = pg.ViewBox()
+        self.p2.showAxis('right')
+        self.p2.scene().addItem(self.p4)
+        self.p2.getAxis('right').linkToView(self.p4)
+        self.p4.setXLink(self.p4)
 
         self.region.sigRegionChanged.connect(self.update)
         self.p1.sigRangeChanged.connect(self.updateRegion)
-
-        self.vline = pg.InfiniteLine(angle=90, movable=False)
-        self.hline = pg.InfiniteLine(angle=0, movable=False)
-        self.p1.addItem(self.vline, ignoreBounds=True)
-        self.p1.addItem(self.hline, ignoreBounds=True)
+        self.p1.vb.sigResized.connect(self.updateViews)
 
         self.p1.scene().sigMouseMoved.connect(self.mouseMoved)
 
@@ -120,54 +219,82 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
                 y_ = mousePoint.y()
                 idx = int(x_ - x_%86400)
                 ts = datetime.utcfromtimestamp(idx).strftime('%Y-%m-%d')
+                for i, item in enumerate(self.p1CurveItems):
+                    date = takeClosest(item.xData, idx)
+                    idx2 = np.where(item.xData==date)
+                    yval = round(item.yData[idx2][0],2)
+                    unit = self.unitList[i]
+                    self.p1.legend.items[i][1].setText(self.names[i]+' <strong>'+str(yval)+' '+unit+'</strong>')
+                    self.circleItems[i].setData([date], [yval])
                 if hasattr(self, "crossHairText"):
-                    self.crossHairText.setText(ts + '\n' + str(np.round(y_,2)))
+                    self.crossHairText.setHtml('<strong>'+ts+'</strong>')
                     self.crossHairText.setPos(x_, y_)
-                self.vline.setPos(mousePoint.x())
-                self.hline.setPos(mousePoint.y())
-        except:
+        except Exception as e:
             return
 
     def update(self):
         self.region.setZValue(10)
         minX, maxX = self.region.getRegion()
         self.p1.setXRange(minX, maxX, padding=0)
+        
+    def updateViews(self):
+        self.p2.setGeometry(self.p1.vb.sceneBoundingRect())
+        self.p4.setGeometry(self.p2.vb.sceneBoundingRect())
+        self.p3.linkedViewChanged(self.p1.vb, self.p3.XAxis)
+        self.p4.linkedViewChanged(self.p2.vb, self.p4.XAxis)
     
     def updateRegion(self, window, viewRange):
         rgn = viewRange[0]
         self.region.setZValue(10)
         self.region.setRegion(rgn)
     
-    def add_data_to_plots(self, dataFrame, types = None, fill_below=True, keep_bounds = False, changed_col = None):
+    def add_data_to_plots(self, dataFrame, types = None, fill_below=True, changed_col = None, datasets=None):
         """
         """
         
         cc = colorCycler()
-        self.dataFrame = dataFrame.apply(lambda x: pd.to_numeric(x, errors='coerce'))
-        self.dataFrame.set_index(pd.Int64Index(self.dataFrame.index.astype(np.int64)), inplace=True)
-        self.dataFrame.index = self.dataFrame.index/1000000000
-        mn = min(self.dataFrame.min())
-        mx = max(self.dataFrame.max())
-        rg = mx - mn
-        xmn = self.dataFrame.index.get_level_values(0)[0]
-        xmx = self.dataFrame.index.get_level_values(0)[-1]
-        xrg = xmx - xmn
-        if keep_bounds:
+        dataset_ids = list(set(dataFrame.index.get_level_values(1)))
+        self.dates = dataFrame.index.levels[0].astype('int64')/1000000000
+        self.names = [datasets.loc[id_]['DatasetName'] for id_ in dataset_ids]
+        self.unitList = [datasets.loc[id_]['DatasetUnits'] for id_ in dataset_ids]
+        units = list(set(self.unitList))
+        units = ', '.join(units)
+
+        yMin = dataFrame.min()
+        yMax = dataFrame.max()
+        yRange = yMax - yMin
+
+        xMin = min(self.dates)
+        xMax = max(self.dates)
+        xRange = xMax - xMin
+
+        if not changed_col == None:
             current_bounds = self.p1.vb.viewRange()
-            y = np.array(self.dataFrame[changed_col].values, dtype="float")
-            x = np.array(self.dataFrame.index.get_level_values(0), dtype="int64")
-            missing = np.isnan(y)
-            x_ = x[~missing]
-            y_ = y[~missing]
+            y = np.array(dataFrame.loc[(slice(None), changed_col)].values, dtype='float')
+            x = np.array(dataFrame.loc[(slice(None), changed_col)].index, dtype='int64')/1000000000
+            #missing = np.isnan(y)
+            x_ = x#[~missing]
+            y_ = y#[~missing]
             dataItemsP1 = self.p1.listDataItems()
             dataItemsP1Names = [item.opts['name'] for item in dataItemsP1]
             dataItemsP2 = self.p2.listDataItems()
             dataItemsP2Names = [item.opts['name'] for item in dataItemsP2]
-            p1Item = dataItemsP1[dataItemsP1Names.index(changed_col)]
-            p2Item = dataItemsP2[dataItemsP2Names.index(changed_col)]
+            p1Item = dataItemsP1[dataItemsP1Names.index(datasets.loc[changed_col]['DatasetName'])]
+            p2Item = dataItemsP2[dataItemsP2Names.index(datasets.loc[changed_col]['DatasetName'])]
             p1Item.setData(x_, y_, antialias=True)
             p2Item.setData(x_, y_, antialias=True)
             self.p1.vb.setRange(xRange = current_bounds[0], yRange = current_bounds[1])
+            self.p2.setLimits(  xMin = xMin, 
+                            xMax = xMax, 
+                            yMin = yMin, 
+                            yMax = yMax,
+                            minXRange = xRange,
+                            minYRange = yRange)
+            self.p1.setLimits(  xMin = xMin, 
+                            xMax = xMax, 
+                            yMin = min([yMin,0]), 
+                            yMax = yMax + yRange/5,
+                            maxYRange = 7*yRange/5)
             return
 
         [self.p1.removeItem(i) for i in self.p1.listDataItems()]
@@ -176,45 +303,65 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
         if hasattr(self, "crossHairText"):
             self.p1.removeItem(self.crossHairText)
         self.p1.addLegend()
-        self.p2.setLimits(  xMin = xmn, 
-                            xMax = xmx, 
-                            yMin = mn, 
-                            yMax = mx,
-                            minXRange = xrg,
-                            minYRange = rg)
-        self.p1.setLimits(  xMin = xmn, 
-                            xMax = xmx, 
-                            yMin = mn - rg/5, 
-                            yMax = mx + rg/5,
-                            maxYRange = rg + 2*rg/5)
-        self.p1.setRange(yRange = [mn, mx])
+        self.p2.setLimits(  xMin = xMin, 
+                            xMax = xMax, 
+                            yMin = yMin, 
+                            yMax = yMax,
+                            minXRange = xRange,
+                            minYRange = yRange)
+        self.p1.setLimits(  xMin = xMin, 
+                            xMax = xMax, 
+                            yMin = min([yMin,0]), 
+                            yMax = yMax + yRange/5,
+                            maxYRange = 7*yRange/5)
+        self.p1.setRange(yRange = [ min([yMin,0]), yMax])
+
+        self.circleItems = []
+        self.p1CurveItems = []
+        self.p2CurveItems = []
+
         if types == None:
-            types = ['line' for col in dataFrame.columns]
-        if len(types) != len(dataFrame.columns):
+            types = [datasets.loc[i]['DatasetAdditionalOptions']['PlotType'] if (isinstance(datasets.loc[i]['DatasetAdditionalOptions'], dict) and 'PlotType' in list(datasets.loc[i]['DatasetAdditionalOptions'])) else 'line' for i in dataset_ids]
+
+        if len(types) != len(dataset_ids):
             return
-        for i, col in enumerate(self.dataFrame.columns):
-            y = np.array(self.dataFrame[col].values, dtype="float")
-            x = np.array(self.dataFrame.index.get_level_values(0), dtype="int64")
-            missing = np.isnan(y)
-            x_ = x[~missing]
-            y_ = y[~missing]
+        for i, col in enumerate(dataset_ids):
+            y = np.array(dataFrame.loc[(slice(None), col)].values, dtype='float')
+            x = np.array(dataFrame.loc[(slice(None), col)].index, dtype='int64')/1000000000
+            #missing = np.isnan(y)
+            x_ = x#[~missing]
+            y_ = y#[~missing]
+            pen = pg.mkPen(color=cc.getColorOpaque(i), width=2)
             if types[i] == 'bar':
                 x_ = np.append(x_, x_[-1])
-                self.p2.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col, antialias=True)
-                self.p1.plot(x=x_, y=y_, pen='k', stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=col, antialias=True)
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                #self.p2.plot(x=x_, y=y_, pen=None, stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
+                #self.p1.plot(x=x_, y=y_, pen=None, stepMode = True, fillLevel=0,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
             elif types[i] == 'line' and fill_below==True:
-                self.p2.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col, antialias=True)
-                self.p1.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=col, antialias=True)
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                #self.p2.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
+                #self.p1.plot(x=x_, y=y_, pen='k', fillLevel = 0, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
             elif types[i] == 'scatter':
-                self.p2.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
-                self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=col, antialias=True)
-            
-        self.region.setRegion([xmn, xmx])
-        self.region.setBounds([xmn, xmx])
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True))
+                #self.p2.plot(x=x_, y=y_, pen='k', symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
+                #self.p1.plot(x=x_, y=y_, pen='k', symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, clipToView=True)
+            self.circleItems.append(pg.ScatterPlotItem([x_[0]], [y_[0]], pen='k', brush=cc.getColorOpaque(i), size=10, alpha=1))
+
+        [self.p1.addItem(item) for item in self.p1CurveItems]
+        [self.p2.addItem(item) for item in self.p2CurveItems]
+        [self.p1.addItem(item) for item in self.circleItems]
+        self.p1.showGrid(True, True, 0.85)
+        self.region.setRegion([xMin, xMax])
+        self.region.setBounds([xMin, xMax])
         self.region.setZValue(10)
         self.crossHairText = pg.TextItem(anchor=(0,1), color = (45,45,45))
         self.p1.addItem(self.crossHairText)
-
+        self.p1.setLabel('left', units, **{'color':'#000000', 'font-size':'14pt', 'font-family':'Arial, Helvetica, sans-serif'})
+        self.p2.setLabel('left', ' ')
+        self.allItems = self.p1.listDataItems()
         return
 
 
@@ -224,8 +371,8 @@ class colorCycler():
     """
     def __init__(self):
         self.colors = [
-            (228,26,28,150),
             (55,126,184,150),
+            (228,26,28,150),
             (77,175,74,150),
             (152,78,163,150),
             (255,127,0,150),
@@ -235,6 +382,27 @@ class colorCycler():
 
     def getColor(self, i):
         return self.colors[i%len(self.colors)]
+    def getColorOpaque(self, i):
+        col= self.colors[i%len(self.colors)]
+        return (col[0], col[1], col[2], 250)
+
+def takeClosest(myList, myNumber):
+    """
+    Assumes myList is sorted. Returns closest value to myNumber.
+
+    If two numbers are equally close, return the smallest number.
+    """
+    pos = bisect_left(myList, myNumber)
+    if pos == 0:
+        return myList[0]
+    if pos == len(myList):
+        return myList[-1]
+    before = myList[pos - 1]
+    after = myList[pos]
+    if after - myNumber < myNumber - before:
+       return after
+    else:
+       return before
 
 if __name__ == '__main__':
     import sys

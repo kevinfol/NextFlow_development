@@ -17,7 +17,7 @@ import  subprocess
 from    PyQt5   import  QtWidgets, \
                         QtCore, \
                         QtGui
-from    resources.GUI.Tabs  import  DatasetsTab, DataTab, ForecastsTab
+from    resources.GUI.Tabs  import  DatasetsTab, DataTab, CreateForecastsTab
 
 myappid = u'reclamation.NextFlow.2b'
 if platform.system() == 'Windows':
@@ -55,8 +55,8 @@ class UI_MainWindow(object):
         self.dataTab = DataTab.DataTab()
         tabWidget.addTab(self.dataTab, "Data")
 
-        self.forecastsTab = ForecastsTab.ForecastsTab()
-        tabWidget.addTab(self.forecastsTab, "Forecasts")
+        self.forecastsTab = CreateForecastsTab.CreateForecastsTab()
+        tabWidget.addTab(self.forecastsTab, "Create Forecasts")
         
 
         self.setCentralWidget(tabWidget)
