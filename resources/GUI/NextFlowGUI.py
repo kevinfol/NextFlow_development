@@ -55,8 +55,8 @@ class UI_MainWindow(object):
         self.dataTab = DataTab.DataTab()
         tabWidget.addTab(self.dataTab, "Data")
 
-        self.forecastsTab = CreateForecastsTab.CreateForecastsTab()
-        tabWidget.addTab(self.forecastsTab, "Create Forecasts")
+        #self.forecastsTab = CreateForecastsTab.CreateForecastsTab()
+        #tabWidget.addTab(self.forecastsTab, "Create Forecasts")
         
 
         self.setCentralWidget(tabWidget)

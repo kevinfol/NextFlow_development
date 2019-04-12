@@ -1,23 +1,23 @@
-
 [GENERAL]
-application_datetime=today
+application_datetime = today
 
 [PLOTTING]
-filled_plots=False
-line_width=2
-color_cycler_theme=default
-mouse_interaction_mode=0
+filled_plots = False
+line_width = 2
+color_cycler_theme = default
+use_twin_axes = False
 
 [STATISTICS]
 
 [DATASETS TAB]
-current_map_location=
-current_map_layers=
+current_map_location = POSITION:47.877670790949345|-113.38989257812501|9
+current_map_layers = ACTIVELAYERS:Grayscale,Watersheds,STREAMGAGE,SNOTEL,SCAN,RESERVOIR
 
 [FILE OPS]
-file_name=C:\Users\KFoley\untitled.fcst
+file_name = F:/Release12062018/unititled.fcst
 
 [DATA TAB]
-por_start=
-current_plotted_columns=
-current_plot_bounds=
+por_start = 1990
+current_plotted_columns = 100560,100059,102052
+current_plot_bounds = 1261081817.630752,1400981444.9085197,0.0,62.531816765980224
+

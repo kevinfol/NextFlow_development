@@ -74,6 +74,7 @@ class predictionTargetSpecificationWidget(QtWidgets.QWidget):
             self.table.setCellWidget(row, 0, plusMinusToggle_)
             self.table.setCellWidget(row, 1, comboBox_)
             item = QtWidgets.QTableWidgetItem(u"\u232B")
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
             self.table.setItem(row, 2, item)
             item = QtWidgets.QTableWidgetItem('+')
             item.setFlags(QtCore.Qt.ItemIsEnabled)
