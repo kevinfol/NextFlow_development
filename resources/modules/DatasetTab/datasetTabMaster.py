@@ -143,7 +143,14 @@ class datasetTab(object):
         """
         Updates the datasettable with any changes made by the user in the edit dialog. The data is re-load
         """
-        self.datasetTable.update(dataset)
+        if not dataset.index >= 500000:
+            newIdx = [max([500000, max(self.datasetTable.index)+1])]
+            datasetToRemove = self.datasetTable.loc[dataset.index[0]]
+            self.datasetTable.drop(datasetToRemove.name, inplace=True)
+            dataset.index = newIdx
+            self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
+        else:
+            self.datasetTable.update(dataset)
         self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 

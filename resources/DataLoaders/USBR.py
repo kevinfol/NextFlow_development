@@ -57,7 +57,7 @@ def dataLoader(dataset, startDate, endDate):
         dataValues = data['SITE']['DATA'] # Load the data into a list of dicts
         df = pd.DataFrame(dataValues, index = pd.date_range(startDate, endDate)) # Load into dataframe
         del df['DATE'] # Delete the date column
-        df['IN'] = pd.to_numeric(df['IN'])
+        df[pcode.upper()] = pd.to_numeric(df[pcode.upper()])
         df.replace(to_replace=998877, value=np.nan, inplace=True) # Replace missing data with NaN's
         df.replace(to_replace=998877.0, value=np.nan, inplace=True) # Replace missing data with NaN's
         df = df[~df.index.duplicated(keep='first')] # Remove duplicates from the dataset

@@ -362,7 +362,7 @@ Date        |   Data Value
 
         # Try and use the loader to load the last 10 days of data
         try:
-            currentDate = pd.to_datetime(self.parent.applicationPrefsConfig['GENERAL']['application_datetime'])
+            currentDate = pd.to_datetime(self.parent.userOptionsConfig['GENERAL']['application_datetime'])
             startDate = currentDate - pd.DateOffset(10)
             data = loader.dataLoader(dataset.loc[1], startDate, currentDate)
         except Exception as E:

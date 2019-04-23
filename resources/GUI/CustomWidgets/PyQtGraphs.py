@@ -14,12 +14,9 @@ def updateSize_(self):
         
     height = 0
     width = 0
-    #print("-------")
     for sample, label in self.items:
         height += max(sample.boundingRect().height(), label.height()) + 3
         width = max(width, sample.boundingRect().width()+label.width())
-        #print(width, height)
-    #print width, height
     self.setGeometry(0, 0, width+60, height)
 
 def addItem_(self, item, name):
@@ -52,7 +49,6 @@ def updateItems_(self):
                 scatterArgs[v] = self.opts[k]
         
         x,y = self.getData()
-        print("x: ", len(x), "  y: ", len(y))
         #scatterArgs['mask'] = self.dataMask
         
         if curveArgs['pen'] is not None or (curveArgs['brush'] is not None and curveArgs['fillLevel'] is not None):
@@ -76,18 +72,14 @@ def getData_(self):
             y = self.yData
             
             if self.opts['fftMode']:
-                print('fftmode')
                 x,y = self._fourierTransform(x, y)
                 # Ignore the first bin for fft data if we have a logx scale
                 if self.opts['logMode'][0]:
-                    print('fftLogMode')
                     x=x[1:]
                     y=y[1:]                
             if self.opts['logMode'][0]:
-                print('logmode1')
                 x = np.log10(x)
             if self.opts['logMode'][1]:
-                print('logmode2')
                 y = np.log10(y)
             ds = self.opts['downsample']
             if not isinstance(ds, int):
@@ -120,8 +112,6 @@ def getData_(self):
                 if self.opts['downsampleMethod'] == 'subsample':
                     x = x[::ds]
                     y = y[::ds]
-                    print(len(x))
-                    print(len(y))
                 elif self.opts['downsampleMethod'] == 'mean':
                     n = len(x) // ds
                     x = x[:n*ds:ds]
@@ -266,6 +256,11 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
     def add_data_to_plots(self, dataFrame, types = None, fill_below=True, changed_col = None, datasets=None):
         """
         """
+
+        # Check to make sure the dataframe actually contains data!
+        if np.all(pd.isnull(dataFrame.values)):
+            return
+            
         
         cc = colorCycler()
         dataset_ids = list(set(dataFrame.index.get_level_values(1)))
@@ -284,7 +279,6 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
         xRange = xMax - xMin
 
         if not changed_col == None:
-            print('changing column: ', changed_col)
             current_bounds = self.p1.vb.viewRange()
             y = np.array(dataFrame.loc[(slice(None), changed_col)].values, dtype='float')
             x = np.array(dataFrame.loc[(slice(None), changed_col)].index, dtype='int64')/1000000000
@@ -347,15 +341,17 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
             x = np.array(dataFrame.loc[(slice(None), col)].index, dtype='int64')/1000000000
             x_ = x
             y_ = y
-            pen = pg.mkPen(color=cc.getColorOpaque(i), width=2)
+            idxNum = np.where(datasets.index == col)[0][0]
+            pen = pg.mkPen(color=cc.getColorOpaque(idxNum), width=2)
+            
             if types[i] == 'bar':
                 x_ = np.append(x_, x_[-1])
-                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
-                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
 
             elif types[i] == 'line' and fill_below==True:
-                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='peak', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
-                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(i), name=self.names[i], antialias=False, downsampleMethod='peak', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='peak', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='peak', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
                 
             elif types[i] == 'scatter':
                 self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))

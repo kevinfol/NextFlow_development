@@ -35,7 +35,7 @@ class DataTab(QtWidgets.QWidget):
         self.downloadProgressBar.setRange(0, 100)
         self.downloadProgressBar.setFixedWidth(100)
         self.downloadProgressBar.hide()
-        self.viewMissingButton = QtWidgets.QPushButton("View Missing")
+        self.compositeButton = QtWidgets.QPushButton("Create Composite Dataset")
         hlayout.addWidget(porLabel)
         hlayout.addWidget(self.porT1)
         hlayout.addWidget(self.porT2)
@@ -43,7 +43,7 @@ class DataTab(QtWidgets.QWidget):
         hlayout.addWidget(self.importButton)
         hlayout.addWidget(self.downloadProgressBar)
         hlayout.addSpacerItem(QtWidgets.QSpacerItem(500, 10, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
-        hlayout.addWidget(self.viewMissingButton)
+        hlayout.addWidget(self.compositeButton)
         layout.addLayout(hlayout)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)

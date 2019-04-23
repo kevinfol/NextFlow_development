@@ -96,7 +96,10 @@ class DatasetBoxView(QtWidgets.QListWidget):
         idx = self.currentRow()
         if idx == -1:
             return
-        datasetID = self.item(idx).dataset.name
+        try:
+            datasetID = self.item(idx).dataset.name
+        except:
+            datasetID = self.item(idx).dataset
         self.takeItem(idx)
         self.removeSignal.emit(datasetID)
 
@@ -126,6 +129,47 @@ class DatasetBoxView(QtWidgets.QListWidget):
         return
 
 
+    def addAbstractEntry(self, dictionary):
+        """
+        dictionary of form:
+            {   "Title":string,
+                "subtitle1": string,
+                "subtitle2": string,
+                "subtitle3": string }
+        """
+
+        if not set(['Title', 'subtitle1', 'subtitle2', 'subtitle3']).issubset(set(dictionary.keys())):
+            return
+
+        for key in dictionary.keys():
+            if not isinstance(dictionary[key], str):
+                dictionary[key] = str(dictionary[key])
+
+        html = """<b style="color:#0a85cc; font-size:14px">{0}</b><br>
+        {1}<br>
+        {2}<br>
+        {3}
+        """.format(dictionary['Title'], dictionary['subtitle1'], dictionary['subtitle2'], dictionary['subtitle3'])
+
+
+        widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        item = QtWidgets.QListWidgetItem()
+        item.textbox = QtWidgets.QLabel(html)
+        item.textbox.setTextFormat(QtCore.Qt.RichText)
+        
+        layout.addWidget(item.textbox)
+        widget.setLayout(layout)
+
+        item.dataset = dictionary
+        item.setSizeHint(QtCore.QSize(0,105))
+        self.addItem(item)
+        self.setItemWidget(item, widget)
+
+
+        return "Good"
+
+
     def addEntry(self, datasetRow):
         """
         Keyword Arguments:
@@ -135,8 +179,9 @@ class DatasetBoxView(QtWidgets.QListWidget):
         html = """<b style="color:#0a85cc; font-size:14px">{0}</b><br>
         <b>ID: </b>{1}<br>
         <b>Type: </b>{2}<br>
-        <b>Parameter: </b>{3}
-        """.format(datasetRow['DatasetName'], datasetRow['DatasetExternalID'], datasetRow['DatasetAgency'] + ' ' + datasetRow['DatasetType'], datasetRow['DatasetParameter'])
+        <b>Parameter: </b>{3}<br>
+        <i style="font-size:10px; color:#4c4c4c">{4}</i>
+        """.format(datasetRow['DatasetName'], datasetRow['DatasetExternalID'], datasetRow['DatasetAgency'] + ' ' + datasetRow['DatasetType'], datasetRow['DatasetParameter'], datasetRow.name)
         
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout()

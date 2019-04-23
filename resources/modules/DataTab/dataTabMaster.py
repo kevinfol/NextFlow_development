@@ -4,7 +4,7 @@ Description:    This script contains all the functionality behind the User inter
 """
 from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DataTab import downloadData
-from resources.GUI.Dialogs.ConflictReviewDialog import conflictReviewDialog
+from resources.GUI.Dialogs.createCompositeDataset import compositeDatasetDialog
 from resources.GUI.Dialogs import UserDefinedDatasetDialog
 from PyQt5 import QtCore
 import time
@@ -21,6 +21,7 @@ class dataTab(object):
         self.dataTab.porT2.setText(datetime.strftime(pd.to_datetime(self.userOptionsConfig['GENERAL']['application_datetime']), '%Y'))
         self.dataTab.downloadButton.clicked.connect(self.downloadData)
         self.dataTab.importButton.clicked.connect(lambda x: self.createUserDefinedDataset(importDatasetFlag=True))
+        self.dataTab.compositeButton.clicked.connect(self.openCompositeDialog)
         self.currentlyPlottedColumns = []
 
         return
@@ -50,7 +51,40 @@ class dataTab(object):
         self.userOptionsConfig['DATA TAB']['current_plot_bounds'] = ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[0]) + ',' + ','.join(str(x) for x in self.dataTab.dataPlot.p1.vb.viewRange()[1])
         
         return
-        
+    
+    def openCompositeDialog(self):
+        """
+        """
+        self.compDialog = compositeDatasetDialog(self.datasetTable, self.dataTable)
+        self.compDialog.returnDatasetSignal.connect(self.addNewlyCombinedDatasetToDatastores)
+        self.compDialog.exec_()
+
+    def addNewlyCombinedDatasetToDatastores(self, datasetObj):
+        """
+        """
+
+        # Parse the object
+        dataset = datasetObj[0]
+        data = datasetObj[1]
+
+        # First, figure out the new datasetInternalID
+        if list(self.datasetTable.index) == []:
+            maxIndex = 0
+        else:
+            maxIndex = max(self.datasetTable.index)
+        if maxIndex < 500000:
+            maxIndex = 500000
+        else:
+            maxIndex = maxIndex + 1
+        dataset.index = [maxIndex]
+
+        # Append the dataset to the datasetTable
+        self.addUserDefinedDatasetToSelectedDatasets(dataset)
+
+        # Append the data to the dataTable
+        self.setDataForImportedDataset(data)
+
+        return
 
     def downloadData(self):
         """
@@ -103,12 +137,6 @@ class dataTab(object):
 
         return
 
-    def importDataset(self):
-        """
-        This function opens up the Import dialog to let the user import a custom dataset
-        """
-        
-        return
 
     @QtCore.pyqtSlot(object)
     def setDataForImportedDataset(self, data):
@@ -119,6 +147,7 @@ class dataTab(object):
         data.columns =['Value']
         data.set_index([data.index, pd.Index(len(data)*[id_])], inplace=True)
         data.index.names = ['Datetime','DatasetInternalID']
+        print(data)
         self.postProcessNewData(data)
         return
 
@@ -127,6 +156,10 @@ class dataTab(object):
         This function gets the raw downloaded data from the downloadData function and merges it with the existing dataset, updating any outdated 
         values, and detecting any merge conflicts.
         """
+
+        # Don't bother with empty datatables
+        if newDataTable.empty:
+            return
 
         # First create a merged dataTable
         merged = pd.merge(left=self.dataTable, right=newDataTable, on=['Datetime','DatasetInternalID'], suffixes=('_old','_new'), indicator=True, how='outer')
@@ -170,10 +203,15 @@ class dataTab(object):
         """
         if self.dataTable.empty:
             return
+
+        print(self.datasetTable)
+        print(self.dataTable)
         self.dataTab.table.model().initialize_model_with_dataset(self.dataTable, self.datasetTable)
+        print("At Location 2")
         self.dataTab.table.horizontalHeader().sectionClicked.connect(lambda x: self.plotClickedColumns())
         self.dataTab.table.model().changedDataSignal.connect(self.userChangedData)
         self.plotClickedColumns([self.datasetTable.index[0]])
+        print("At Location 4")
 
         return
  
@@ -205,6 +243,9 @@ class dataTab(object):
             if self.currentlyPlottedColumns == [] or self.currentlyPlottedColumns == None:
                 return
         data = self.dataTable.loc[(slice(None), self.currentlyPlottedColumns), 'Value']
+        if isinstance(displayColumns, list) and isinstance(changed_col, int):
+            if changed_col not in displayColumns:
+                changed_col = None
         self.dataTab.dataPlot.add_data_to_plots(data, changed_col = changed_col, datasets=self.datasetTable)
 
         return
