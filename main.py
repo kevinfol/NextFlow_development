@@ -31,6 +31,8 @@ Disclaimer:         This script, and the overall NextFlow Application have not b
 
 # Import Libraries
 import sys
+import warnings
+warnings.filterwarnings('ignore')
 import time
 import argparse
 import resources.application as application
@@ -38,6 +40,18 @@ from datetime import datetime
 from PyQt5 import QtGui, QtWidgets, QtCore
 
 if __name__ == '__main__':
+
+    # Print out a welcom message
+    print("""
+    ===========================================================
+
+    STARTING NextFlow SOFTWARE
+
+    logs and print statements will be printed in this terminal
+
+    ===========================================================
+
+    """)
 
     # Begin loading the application
     app = QtWidgets.QApplication(sys.argv)

@@ -16,11 +16,17 @@ class compositeDatasetDialog(QtWidgets.QDialog):
 
     returnDatasetSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, datasetTable, dataTable):
+    def __init__(self, datasetTable, dataTable, predefinedOptions = None):
         super(compositeDatasetDialog, self).__init__()
         self.datasetTable = datasetTable
+
+        if datasetTable.empty:
+            print('No datasets')
+            return
+
         self.dataTable = dataTable
         self.setupUI()
+        self.loadPredifinedOptions(predefinedOptions)
         return
 
     def setupUI(self):
@@ -69,6 +75,45 @@ class compositeDatasetDialog(QtWidgets.QDialog):
 
         return
     
+    def loadPredifinedOptions(self, options):
+        if not isinstance(options, pd.Series):
+            self.predifinedIndex = -100
+            return
+        self.predifinedIndex = options.name
+
+        comboString = options['DatasetAdditionalOptions']['CompositeString']
+        
+        def parser(idx, parseString):
+            if idx == 0:
+                return None
+            elif idx == 1 or idx == 3:
+                return [int(i) for i in parseString.split(',')]
+            elif idx == 2:
+                return [float(i) for i in parseString.split(',')]
+
+        null, IDs, CFs, LGs = [parser(i, x) for i,x in enumerate(comboString.split('/'))]
+
+        for i, idx in enumerate(IDs):
+            dataset = self.datasetTable.loc[idx]
+            NameString = "{0}: {1} ({2})".format(dataset['DatasetName'], dataset['DatasetParameter'], idx)
+            if i == 0:
+                self.expressionFields.elements[0].datasetName.setCurrentText(NameString)
+                self.expressionFields.elements[0].coefEnter.setText(str(CFs[0]))
+                self.expressionFields.elements[0].tshiftEnter.setValue(LGs[0])
+            else:
+                self.expressionFields.addElement()
+                self.expressionFields.elements[i].datasetName.setCurrentText(NameString)
+                self.expressionFields.elements[i].coefEnter.setText(str(CFs[i]))
+                self.expressionFields.elements[i].tshiftEnter.setValue(LGs[i])
+        
+        self.nameEdit.setText(options['DatasetName'])
+
+        for i in range(self.descriptorTable.rowCount()):
+            key = self.descriptorTable.item(i, 0).text()
+            value = options[key]
+            self.descriptorTable.setItem(i, 1, QtWidgets.QTableWidgetItem(str(value)))
+
+
     def tableToDict(self):
         """
         """
@@ -113,12 +158,10 @@ class compositeDatasetDialog(QtWidgets.QDialog):
                     return
         
         s = s.format(','.join(ids), ','.join(coefs), ','.join(tsfts))
-        print('s: ', s)
         d = self.tableToDict()
         d['DatasetName'] = datasetName
-        d['DatasetAdditionalOptions'] = {"CompositeString":s}
 
-        datasetEntry, dataEntry = DataProcessor.combinedDataSet(self.dataTable, self.datasetTable, s, d)
+        datasetEntry, dataEntry = DataProcessor.combinedDataSet(self.dataTable, self.datasetTable, s, d, self.predifinedIndex)
         self.returnDatasetSignal.emit([datasetEntry, dataEntry])
         self.close()
         return
@@ -130,11 +173,12 @@ class ExpressionFields(QtWidgets.QWidget):
         self.datasetTable = datasetTable
         QtWidgets.QWidget.__init__(self)
         
+        
         self.elements = []
         self.layout = QtWidgets.QVBoxLayout()
         self.label1 = QtWidgets.QLabel("Input Datasets")
         self.label1.setFixedHeight(20)
-        self.addButton = hoverButton('resources/GraphicalResources/icons/additionalTab.png', 'resources/GraphicalResources/icons/additionalTabHover.png')
+        self.addButton = hoverButton('resources/GraphicalResources/icons/plusIcon.png', 'resources/GraphicalResources/icons/plusIconDark.png')
         self.addButton.triggered.connect(self.addElement)
         self.addButton.setFixedHeight(20)
         hlayout = QtWidgets.QHBoxLayout()
@@ -168,8 +212,7 @@ class ExpressionElement(QtWidgets.QWidget):
     destroySig = QtCore.pyqtSignal(object)
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
-        
-
+        self.setObjectName("ExElement")
         self.label0 = QtWidgets.QLabel("Dataset: ")
         self.label1 = QtWidgets.QLabel("Coefficient: ")
         self.label2 = QtWidgets.QLabel("Time Shift: ")

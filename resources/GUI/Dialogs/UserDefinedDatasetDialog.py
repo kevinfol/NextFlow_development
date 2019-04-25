@@ -15,7 +15,7 @@ class UserDefinedDatasetDialog(QtWidgets.QDialog):
     updatedDatasetSignal = QtCore.pyqtSignal(object)
     returnDataFromImportSignal = QtCore.pyqtSignal(object)
 
-    def __init__(self, loadOptions=None, parent=None, datasetTypes=None, importDatasetFlag=False):
+    def __init__(self, loadOptions=None, parent=None, datasetTypes=None, importDatasetFlag=False,):
         super(UserDefinedDatasetDialog, self).__init__()
         self.importDatasetFlag = importDatasetFlag
         if 'USER DEFINED' not in datasetTypes:
@@ -338,7 +338,7 @@ Date        |   Data Value
             try:
                 if fileName[-4:] == '.csv':
                     df = pd.read_csv(fileName, index_col=0, parse_dates=True)
-                elif '.xls' in fileName[-4:]:
+                elif '.xls' in fileName[-5:]:
                     df = pd.read_excel(fileName, index_col=0, parse_dates=True)
                 else:
                     return False

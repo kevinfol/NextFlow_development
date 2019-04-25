@@ -145,7 +145,6 @@ class SpreadSheetModel(QtCore.QAbstractItemModel):
             return False
         if str(round(oldValue, 3)) == str(round(value,3)):
             return False
-        self.dataTable.loc[(date, id_)] = (value, True)
         self.changedDataSignal.emit([date, id_, oldValue, value])
         return True
         

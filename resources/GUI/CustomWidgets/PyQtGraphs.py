@@ -131,7 +131,10 @@ def getData_(self):
 
                 # and only if clip to view or auto-downsampling is enabled
                 if self.opts['clipToView'] or self.opts['autoDownsample']:
-
+                    if (x is None and y is None) or (len(x) == 0 and len(y) == 0):
+                        if self.opts["stepMode"]:
+                            x = np.array([0,0])
+                            y = np.array([0])
                     # if there is data
                     if x is not None:
                         # if step mode is enabled and len(x) != len(y) + 1
@@ -139,15 +142,12 @@ def getData_(self):
                             if len(x) > 2:
                                 x = np.append(x, (x[-1] - x[-2]) + x[-1])
 
-                    if (x is None and y is None) or (len(x) == 0 and len(y) == 0):
-                        if self.opts["stepMode"]:
-                            x = np.array([0,0])
-                            y = np.array([0])
+                    
             self.xDisp = x
             self.yDisp = y
         return x,y 
 
-pg.setConfigOption('background', '#FFFFFF')
+pg.setConfigOption('background', '#ffffff')
 pg.setConfigOption('foreground', 'k')
 
 PlotDataItem.getData = getData_
@@ -259,6 +259,7 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
 
         # Check to make sure the dataframe actually contains data!
         if np.all(pd.isnull(dataFrame.values)):
+            print("Whatcha trying to do!")
             return
             
         
@@ -279,32 +280,33 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
         xRange = xMax - xMin
 
         if not changed_col == None:
-            current_bounds = self.p1.vb.viewRange()
-            y = np.array(dataFrame.loc[(slice(None), changed_col)].values, dtype='float')
-            x = np.array(dataFrame.loc[(slice(None), changed_col)].index, dtype='int64')/1000000000
+            for col in changed_col:
+                current_bounds = self.p1.vb.viewRange()
+                y = np.array(dataFrame.loc[(slice(None), col)].values, dtype='float')
+                x = np.array(dataFrame.loc[(slice(None), col)].index, dtype='int64')/1000000000
 
-            x_ = x
-            y_ = y
-            dataItemsP1 = self.p1.listDataItems()
-            dataItemsP1Names = [item.opts['name'] for item in dataItemsP1]
-            dataItemsP2 = self.p2.listDataItems()
-            dataItemsP2Names = [item.opts['name'] for item in dataItemsP2]
-            p1Item = dataItemsP1[dataItemsP1Names.index(datasets.loc[changed_col]['DatasetName'])]
-            p2Item = dataItemsP2[dataItemsP2Names.index(datasets.loc[changed_col]['DatasetName'])]
-            p1Item.setData(x_, y_, antialias=True)
-            p2Item.setData(x_, y_, antialias=True)
-            self.p1.vb.setRange(xRange = current_bounds[0], yRange = current_bounds[1])
-            self.p2.setLimits(  xMin = xMin, 
-                            xMax = xMax, 
-                            yMin = yMin, 
-                            yMax = yMax,
-                            minXRange = xRange,
-                            minYRange = yRange)
-            self.p1.setLimits(  xMin = xMin, 
-                            xMax = xMax, 
-                            yMin = min([yMin,0]), 
-                            yMax = yMax + yRange/5,
-                            maxYRange = 7*yRange/5)
+                x_ = x
+                y_ = y
+                dataItemsP1 = self.p1.listDataItems()
+                dataItemsP1Names = [item.opts['name'] for item in dataItemsP1]
+                dataItemsP2 = self.p2.listDataItems()
+                dataItemsP2Names = [item.opts['name'] for item in dataItemsP2]
+                p1Item = dataItemsP1[dataItemsP1Names.index(datasets.loc[col]['DatasetName'])]
+                p2Item = dataItemsP2[dataItemsP2Names.index(datasets.loc[col]['DatasetName'])]
+                p1Item.setData(x_, y_, antialias=True)
+                p2Item.setData(x_, y_, antialias=True)
+                self.p1.vb.setRange(xRange = current_bounds[0], yRange = current_bounds[1])
+                self.p2.setLimits(  xMin = xMin, 
+                                xMax = xMax, 
+                                yMin = yMin, 
+                                yMax = yMax,
+                                minXRange = xRange,
+                                minYRange = yRange)
+                self.p1.setLimits(  xMin = xMin, 
+                                xMax = xMax, 
+                                yMin = min([yMin,0]), 
+                                yMax = yMax + yRange/5,
+                                maxYRange = 7*yRange/5)
             return
 
         [self.p1.removeItem(i) for i in self.p1.listDataItems()]
@@ -345,9 +347,10 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
             pen = pg.mkPen(color=cc.getColorOpaque(idxNum), width=2)
             
             if types[i] == 'bar':
+                print("Printing a bar graph")
                 x_ = np.append(x_, x_[-1])
-                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
-                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=None, stepMode = True,  brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, stepMode = True, fillLevel=0,  fillbrush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
+                self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, stepMode = True,  brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
 
             elif types[i] == 'line' and fill_below==True:
                 self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, brush=cc.getColor(idxNum), name=self.names[i], antialias=False, downsampleMethod='peak', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
@@ -357,7 +360,7 @@ class TimeSeriesSliderPlot(pg.GraphicsLayoutWidget):
                 self.p1CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
                 self.p2CurveItems.append(PlotDataItem(x=x_, y=y_, connect='finite', pen=pen, symbol='o', name=self.names[i], antialias=False, downsampleMethod='subsample', autoDownsample=True, autoDownsampleFactor = 0.5, clipToView=True))
 
-            self.circleItems.append(pg.ScatterPlotItem([x_[0]], [y_[0]], pen='k', brush=cc.getColorOpaque(i), size=10, alpha=1))
+            self.circleItems.append(pg.ScatterPlotItem([x_[0]], [y_[0]], pen='k', brush=cc.getColorOpaque(idxNum), size=10, alpha=1))
 
         [self.p1.addItem(item) for item in self.p1CurveItems]
         [self.p2.addItem(item) for item in self.p2CurveItems]

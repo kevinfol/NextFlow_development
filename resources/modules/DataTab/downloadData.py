@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtWidgets
+from resources.modules.Miscellaneous.DataProcessor import combinedDataSet
 import json
 import pandas as pd
 import numpy as np
@@ -12,7 +13,7 @@ import sys
 #             index = pd.MultiIndex(
 #                 levels=[[],[],[]],
 #                 codes = [[],[],[]],
-#                 names = ['Datetime','DatasetInternalID','Version']
+#                 names = ['Datetime','DatasetInternalID']
 #             ),
 #             columns = [
 #                 "Value", # e.g. 24.5
@@ -29,13 +30,14 @@ class alternateThreadWorkerSignals(QtCore.QObject):
 # Define the main alternate thread worker that will actually run the download algorithm
 class alternateThreadWorker(QtCore.QRunnable):
 
-    def __init__(self, datasets, startDate, endDate):
+    def __init__(self, datasets, startDate, endDate, existingDataTable = None):
         super(alternateThreadWorker, self).__init__()
 
         # Load argument
         self.datasets = datasets
         self.startDate = startDate
         self.endDate = endDate
+        self.existingDataTable = existingDataTable
 
         # Get the total number of stations
         self.totalStations = len(self.datasets)
@@ -55,8 +57,17 @@ class alternateThreadWorker(QtCore.QRunnable):
         queue = mp.Queue()
         processes = []
         returned = []
+        compositeDatasets = []
+        importDatasets = []
 
         for dataset in self.datasets.iterrows():
+            if dataset[1]['DatasetDataloader'] == 'COMPOSITE':
+                compositeDatasets.append(dataset)
+                continue
+            elif dataset[1]['DatasetDataloader'] == 'IMPORT':
+                importDatasets.append(dataset)
+                continue                
+
             proc = mp.Process(target = worker, args = (queue, dataset[1], self.startDate, self.endDate))
             processes.append(proc)
             proc.start()
@@ -74,7 +85,30 @@ class alternateThreadWorker(QtCore.QRunnable):
             if returnValue.empty:
                 continue
             self.df = pd.concat([self.df, returnValue])
+        
+        # Update any imported spreadsheets (assuming the file still exists)
+        for i, dataset in importDatasets:
+            fileName = dataset['DatasetAdditionalOptions']['Import Filename']
+            try:
+                if fileName[-4:] == '.csv':
+                    df = pd.read_csv(fileName, index_col=0, parse_dates=True)
+                elif '.xls' in fileName[-5:]:
+                    df = pd.read_excel(fileName, index_col=0, parse_dates=True)
+                
+                df.columns =['Value']
+                df.set_index([df.index, pd.Index(len(df)*[i])], inplace=True)
+                df.index.names = ['Datetime', 'DatasetInternalID']
+                self.df = pd.concat([self.df, df])
+                
+            except:
+                df = self.existingDataTable.loc[(slice(None), dataset.name), 'Value']
+                self.df = pd.concat([self.df, df])
+                continue
+
+        
             
+
+        
         self.df = self.df[~self.df.index.duplicated(keep='first')]
         self.signals.returnNewData.emit(self.df)
         self.signals.finished.emit(True)

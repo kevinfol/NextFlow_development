@@ -12,7 +12,7 @@ import pandas as pd
 from PyQt5 import QtCore
 from resources.modules.Miscellaneous import loggingAndErrors
 from resources.modules.DatasetTab import gisFunctions
-from resources.GUI.Dialogs import UserDefinedDatasetDialog
+from resources.GUI.Dialogs import UserDefinedDatasetDialog, createCompositeDataset
 from fuzzywuzzy.fuzz import WRatio 
 import multiprocessing as mp
 import itertools
@@ -96,6 +96,11 @@ class datasetTab(object):
             if 'Import Filename' in dataset['DatasetAdditionalOptions'].keys():
                 self.createUserDefinedDataset(options=dataset, importDatasetFlag=True)
                 return
+            elif 'CompositeString' in dataset['DatasetAdditionalOptions'].keys():
+                self.editCompositeDialog = createCompositeDataset.compositeDatasetDialog(self.datasetTable, self.dataTable, dataset)
+                self.editCompositeDialog.returnDatasetSignal.connect(self.addNewlyCombinedDatasetToDatastores)
+                self.editCompositeDialog.exec_()
+                return
         self.createUserDefinedDataset(options=dataset)
 
         return
@@ -151,7 +156,7 @@ class datasetTab(object):
             self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
         else:
             self.datasetTable.update(dataset)
-        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
+        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='last')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 
         return
@@ -161,18 +166,22 @@ class datasetTab(object):
         """
         Parses the user defined dataset and adds to the datasets table.
         """
-        if list(self.datasetTable.index) == []:
-            maxIndex = 0
+        if dataset.index != -1:
+            pass
         else:
-            maxIndex = max(self.datasetTable.index)
-        if maxIndex < 500000:
-            maxIndex = 500000
-        else:
-            maxIndex = maxIndex + 1
-        dataset.index = [maxIndex]
+            if list(self.datasetTable.index) == []:
+                maxIndex = 0
+            else:
+                maxIndex = max(self.datasetTable.index)
+            if maxIndex < 500000:
+                maxIndex = 500000
+            else:
+                maxIndex = maxIndex + 1
+            dataset.index = [maxIndex]
         self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
-        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='first')]
+        self.datasetTable = self.datasetTable[~self.datasetTable.index.duplicated(keep='last')]
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
+
 
         return
 
@@ -310,7 +319,7 @@ class datasetTab(object):
         # Remove any data associated with this dataset from the dataTable, the modelRunTable, and remove any associated forecasts
         self.dataTable.drop(datasetID, level='DatasetInternalID', inplace=True)
         self.dataTable.set_index(self.dataTable.index.remove_unused_levels(), inplace=True)
-        self.displayDataInTable()
+        self.displayDataInTable(True)
         for row in self.modelRunsTable.iterrows():
             if datasetID in row[1]['PredictorPool']:
                 self.modelRunsTable.drop(row[0], inplace=True)    
@@ -351,8 +360,8 @@ class datasetTab(object):
             return
 
         dataset = self.searchableDatasetsTable.loc[datasetID]
-        if dataset['DatasetParameter'].upper() == 'PRECIPITATION':
-            dataset['DatasetAdditionalOptions'] = {'PlotType':'bar'}
+        #if dataset['DatasetParameter'].upper() == 'PRECIPITATION':
+        #    dataset['DatasetAdditionalOptions'] = {'PlotType':'bar'}
         self.datasetTable = self.datasetTable.append(dataset, ignore_index=False)
         self.loadSelectedDatasets(self.datasetTable, self.datasetTab.selectedDatasetsWidget)
 

@@ -2,7 +2,7 @@
 Script Name:    dataTabMaster.py
 Description:    This script contains all the functionality behind the User interface of the Data Tab.
 """
-from resources.modules.Miscellaneous import loggingAndErrors
+from resources.modules.Miscellaneous import loggingAndErrors, DataProcessor
 from resources.modules.DataTab import downloadData
 from resources.GUI.Dialogs.createCompositeDataset import compositeDatasetDialog
 from resources.GUI.Dialogs import UserDefinedDatasetDialog
@@ -67,22 +67,11 @@ class dataTab(object):
         dataset = datasetObj[0]
         data = datasetObj[1]
 
-        # First, figure out the new datasetInternalID
-        if list(self.datasetTable.index) == []:
-            maxIndex = 0
-        else:
-            maxIndex = max(self.datasetTable.index)
-        if maxIndex < 500000:
-            maxIndex = 500000
-        else:
-            maxIndex = maxIndex + 1
-        dataset.index = [maxIndex]
-
         # Append the dataset to the datasetTable
         self.addUserDefinedDatasetToSelectedDatasets(dataset)
 
         # Append the data to the dataTable
-        self.setDataForImportedDataset(data)
+        self.setDataForImportedDataset(data, composite=True)
 
         return
 
@@ -115,7 +104,7 @@ class dataTab(object):
 
         # 4. Download Data For each dataset and append to dataTable
         try:
-            downloadWorker = downloadData.alternateThreadWorker(self.datasetTable, porT1, porT2)
+            downloadWorker = downloadData.alternateThreadWorker(self.datasetTable, porT1, porT2, self.dataTable)
             downloadWorker.signals.updateProgBar.connect(self.dataTab.downloadProgressBar.setValue)
             downloadWorker.signals.returnNewData.connect(lambda x: self.postProcessNewData(x))
             downloadWorker.signals.finished.connect(self.downloadFinished)
@@ -124,6 +113,7 @@ class dataTab(object):
             loggingAndErrors.showErrorMessage(self, 'Could not download data: {0}'.format(E))
             self.dataTab.downloadButton.setEnabled(True)
             self.dataTab.downloadProgressBar.hide()
+
 
         return
 
@@ -139,19 +129,19 @@ class dataTab(object):
 
 
     @QtCore.pyqtSlot(object)
-    def setDataForImportedDataset(self, data):
+    def setDataForImportedDataset(self, data, id_ = -1, composite=False):
         """
         Stores the data from the imported dataset into the dataTable.
         """
-        id_ = self.datasetTable.index[-1]
+        if id_ == -1:
+            id_ = self.datasetTable.index[-1]
         data.columns =['Value']
         data.set_index([data.index, pd.Index(len(data)*[id_])], inplace=True)
         data.index.names = ['Datetime','DatasetInternalID']
-        print(data)
-        self.postProcessNewData(data)
+        self.postProcessNewData(data, composite)
         return
 
-    def postProcessNewData(self, newDataTable):
+    def postProcessNewData(self, newDataTable, recursionFlag = False, noPlot = False):
         """
         This function gets the raw downloaded data from the downloadData function and merges it with the existing dataset, updating any outdated 
         values, and detecting any merge conflicts.
@@ -192,26 +182,41 @@ class dataTab(object):
         self.dataTable = self.dataTable.append(updatedValuesNew_need_validation)
         self.dataTable = self.dataTable[~self.dataTable.index.duplicated(keep='last')]
 
-        self.displayDataInTable()
+        # Update any composite datasets
+        # Regenerate any composite datasets (assuming the original datasets still exist)
+        if not recursionFlag:
+            for i, dataset in self.datasetTable.iterrows():
+                if dataset['DatasetDataloader'] == 'COMPOSITE':
+                    combinationString = dataset['DatasetAdditionalOptions']['CompositeString']
+                    reliesOn = [int(j) for j in combinationString.split('/')[1].split(',')]
+                    if np.all([j in list(self.datasetTable.index) for j in reliesOn]):
+
+                        null, df = DataProcessor.combinedDataSet(self.dataTable, self.datasetTable, combinationString, newDatasetMetaData = {})
+                        df.columns =['Value']
+                        df.set_index([df.index, pd.Index(len(df)*[i])], inplace=True)
+                        df.index.names = ['Datetime', 'DatasetInternalID']
+                        self.postProcessNewData(df, True)
+                        return
+
+                    else:
+                        loggingAndErrors.showErrorMessage(self, "Composite dataset {0} ({1}) relies on a dataset that no longer exists. We did not update this dataset.".format(dataset['DatasetName'], dataset.name))
+
+        self.displayDataInTable(noPlot)
 
         return
 
     
-    def displayDataInTable(self):
+    def displayDataInTable(self, noPlot=False):
         """
         This function takes the dataTable and converts it into a spreadsheet-like datatable. 
         """
         if self.dataTable.empty:
             return
-
-        print(self.datasetTable)
-        print(self.dataTable)
         self.dataTab.table.model().initialize_model_with_dataset(self.dataTable, self.datasetTable)
-        print("At Location 2")
         self.dataTab.table.horizontalHeader().sectionClicked.connect(lambda x: self.plotClickedColumns())
         self.dataTab.table.model().changedDataSignal.connect(self.userChangedData)
-        self.plotClickedColumns([self.datasetTable.index[0]])
-        print("At Location 4")
+        if not noPlot:
+            self.plotClickedColumns([self.datasetTable.index[0]])
 
         return
  
@@ -223,9 +228,29 @@ class dataTab(object):
 
         dataChanges: list of changed data, i.e [date, columnName, oldValue, newValue]
         """
+        self.dataTable.loc[(dataChanges[0], dataChanges[1])] = (dataChanges[3], True)
+        
         if dataChanges[2] == dataChanges[3]:
             return
-        self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, changed_col=dataChanges[1])
+
+        changed_cols = [dataChanges[1]]
+
+        # Update any composite datasets that are based on this data
+        for i, dataset in self.datasetTable.iterrows():
+            if dataset['DatasetDataloader'] == 'COMPOSITE':
+                combinationString = dataset['DatasetAdditionalOptions']['CompositeString']
+                reliesOn = [int(j) for j in combinationString.split('/')[1].split(',')]
+                if dataChanges[1] in reliesOn:
+                    if np.all([j in list(self.datasetTable.index) for j in reliesOn]):
+                        newDataValue = DataProcessor.updateSingleComputedValue(self.dataTable, combinationString, dataChanges[0])
+                        self.dataTable.loc[(dataChanges[0], dataset.name), 'Value'] = newDataValue
+                        changed_cols.append(dataset.name)
+                        
+
+        self.plotClickedColumns(displayColumns=self.currentlyPlottedColumns, changed_col=changed_cols)
+
+        
+                        
 
         # NOTE, NEED TO UPDATE ANY FORECASTS BASED ON THIS DATA
 
@@ -243,9 +268,11 @@ class dataTab(object):
             if self.currentlyPlottedColumns == [] or self.currentlyPlottedColumns == None:
                 return
         data = self.dataTable.loc[(slice(None), self.currentlyPlottedColumns), 'Value']
-        if isinstance(displayColumns, list) and isinstance(changed_col, int):
-            if changed_col not in displayColumns:
-                changed_col = None
+        #print("Data is: ", data)
+        if isinstance(displayColumns, list) and isinstance(changed_col, list):
+            changed_col = [col for col in changed_col if col in displayColumns]
+        else:
+            changed_col = None
         self.dataTab.dataPlot.add_data_to_plots(data, changed_col = changed_col, datasets=self.datasetTable)
 
         return

@@ -11,7 +11,31 @@ import numpy as np
 import re
 
 
-def combinedDataSet(dataTable, datasetTable, combinationString, newDatasetMetaData = {}):
+def updateSingleComputedValue(dataTable, combinationString, onDatetime):
+    """
+    Updates a single value in the dataTable
+    """
+     # Parse and validate the combinationString
+    def parser(idx, parseString):
+        if idx == 0:
+            return None
+        elif idx == 1 or idx == 3:
+            return [int(i) for i in parseString.split(',')]
+        elif idx == 2:
+            return [float(i) for i in parseString.split(',')]
+
+    null, IDs, CFs, LGs = [parser(i, x) for i,x in enumerate(combinationString.split('/'))]
+
+    data = pd.Series([0], index=[onDatetime])
+
+    for i, ID in enumerate(IDs):
+        shiftedDatetime = onDatetime + pd.DateOffset(LGs[i])
+        newData = pd.Series(dataTable.loc[(shiftedDatetime, ID), 'Value'], index=[onDatetime])
+        data = np.sum([data, CFs[i]*pd.Series(newData.values, index=newData.index.get_level_values(0))], axis=0)
+
+    return data
+
+def combinedDataSet(dataTable, datasetTable, combinationString, newDatasetMetaData = {}, existingID = -100):
     """
 
     combinationStrings are formatted as follows:
@@ -54,9 +78,10 @@ def combinedDataSet(dataTable, datasetTable, combinationString, newDatasetMetaDa
     data = pd.Series([0 for i in dates], index=dates)
 
     for i, ID in enumerate(IDs):
-        newData = dataTable.loc[(slice(None), ID), 'Value']
-        data = np.sum([data, CFs[i]*pd.Series(newData.values, index=newData.index.get_level_values(0).shift(LGs[i], freq='D'))], axis=0)
+        newData = dataTable.loc[(slice(None), ID), 'Value'].shift(LGs[i])
+        data = np.sum([data, CFs[i]*pd.Series(newData.values, index=newData.index.get_level_values(0))], axis=0)
         
+
 
     # Create the datasetTableEntry
     defaults = {
@@ -64,11 +89,14 @@ def combinedDataSet(dataTable, datasetTable, combinationString, newDatasetMetaDa
         "DatasetParameter": '-'.join(set(datasetTable.loc[IDs].DatasetParameter.values)),
         "DatasetUnits": '-'.join(set(datasetTable.loc[IDs].DatasetUnits.values)),
         "DatasetExternalID": "Combo: {0}".format(', '.join([str(i) for i in datasetTable.loc[IDs].DatasetExternalID.values])),
-        "DatasetType": "Computed Dataset",
+        "DatasetType": "Combined Dataset",
+        "DatasetDataloader":"COMPOSITE",
         "DatasetAgency": '-'.join(set(datasetTable.loc[IDs].DatasetAgency.values)),
+        "DatasetAdditionalOptions": [{"CompositeString":combinationString}]
     }
+
     defaults.update(newDatasetMetaData)
-    datasetTableEntry = pd.DataFrame(defaults, index=[-1], columns = [
+    datasetTableEntry = pd.DataFrame(defaults, index=[max([-1, existingID])], columns = [
             'DatasetType', # e.g. STREAMGAGE, or RESERVOIR
             'DatasetExternalID', # e.g. "GIBR" or "06025500"
             'DatasetName', # e.g. Gibson Reservoir
@@ -85,9 +113,10 @@ def combinedDataSet(dataTable, datasetTable, combinationString, newDatasetMetaDa
             'DatasetPOREnd',# e.g. 1/22/2019
             'DatasetAdditionalOptions'])
     
-
     # Create the dataTableAppend data
     dataTableAppend = pd.DataFrame(data, columns=['Value'], index=dates)
+    print(dataTableAppend)
+
 
     return datasetTableEntry, dataTableAppend
 
