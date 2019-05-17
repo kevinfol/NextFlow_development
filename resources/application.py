@@ -41,14 +41,11 @@ class mainWindow(QtWidgets.QMainWindow, NextFlowGUI.UI_MainWindow, datasetTabMas
         The __init__ method runs when the GUI is first instantiated. Here we define the 'self' variable as a 
         reference to the mainWindow class, as well as build the GUI and connect all the functionality to the buttons
         and events in the GUI.
-
         """
 
         # Initialize the class as a QMainWindow and setup its User Interface
         super(self.__class__, self).__init__()
         
-        
-
         # Create the data structures.
         # The dataset table stores information about all the datasets being used in the forecast file.
         self.datasetTable = pd.DataFrame(

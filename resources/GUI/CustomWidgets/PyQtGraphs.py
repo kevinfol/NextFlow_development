@@ -1,3 +1,10 @@
+"""
+Script Name:    PyQtGraphs
+Description:    This file provides plotting funcitonality for the NextFlow Application 
+                primarily by modifying the PyQtGraph library to provide interaction and
+                performance enhancements. 
+"""
+
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.Point import Point

@@ -12,13 +12,6 @@
 
 ### Data Tab
 
-### Predictors Tab
-
-### Regression Tab
-
-### Forecasts Tab
-
-### Density Analysis Tab
 
 ### Forecast Export
 

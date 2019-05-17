@@ -73,7 +73,6 @@ if __name__ == '__main__':
         splashFont.setPixelSize(14)
         splash.setFont(splashFont)
         splash.show()
-        #splash.showMessage("     Loading application.", QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom, QtCore.Qt.white)
         time.sleep(1)
 
     # Open the loaded application and close the splash screen
